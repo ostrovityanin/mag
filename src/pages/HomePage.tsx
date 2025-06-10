@@ -1,299 +1,102 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { Link } from 'react-router-dom';
 import { useTelegramContext } from '@/components/TelegramProvider';
 import { WelcomeScreen } from '@/components/WelcomeScreen';
-import { ZodiacSelector } from '@/components/ui/zodiac-selector';
-import { HoroscopeCard } from '@/components/HoroscopeCard';
-import { FortuneCard } from '@/components/FortuneCard';
-import { ChannelRequirement } from '@/components/ChannelRequirement';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Star, Cookie, Sparkles } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { useChannels } from '@/hooks/useChannels';
-import { useUserSubscriptions } from '@/hooks/useUserSubscriptions';
+import { Button } from '@/components/ui/button';
+import { Star, TreePine, Settings } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
   const { user, hapticFeedback } = useTelegramContext();
-  const { toast } = useToast();
-  
-  const [showWelcome, setShowWelcome] = useState(true);
-  const [selectedSign, setSelectedSign] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('horoscope');
-  const [isLoading, setIsLoading] = useState(false);
-  const [todayHoroscope, setTodayHoroscope] = useState<string | null>(null);
-  const [todayFortune, setTodayFortune] = useState<string | null>(null);
 
-  // Используем настоящие хуки вместо локального состояния
-  const { data: channels = [], isLoading: channelsLoading } = useChannels('astro_cookie');
-  const { subscriptions, checkingChannel, checkSubscription } = useUserSubscriptions();
-
-  const allChannelsSubscribed = channels.filter(c => c.required).every(c => subscriptions[c.id]);
-
-  const handleGetStarted = () => {
-    hapticFeedback.impact('light');
-    setShowWelcome(false);
-  };
-
-  const handleSignSelect = (sign: string) => {
+  const handleAppSelect = (appName: string) => {
     hapticFeedback.selection();
-    setSelectedSign(sign);
+    console.log(`Selected app: ${appName}`);
   };
-
-  const handleGetHoroscope = async () => {
-    if (!selectedSign || !allChannelsSubscribed) return;
-    
-    setIsLoading(true);
-    hapticFeedback.impact('medium');
-    
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const mockHoroscope = `Today brings exciting opportunities for ${selectedSign}. The stars align to bring you clarity in personal matters. Trust your intuition and embrace new beginnings. A chance encounter may lead to meaningful connections.`;
-      
-      setTodayHoroscope(mockHoroscope);
-      hapticFeedback.notification('success');
-      
-      toast({
-        title: "Horoscope Ready!",
-        description: "Your daily horoscope has been generated.",
-      });
-    } catch (error) {
-      hapticFeedback.notification('error');
-      toast({
-        title: "Error",
-        description: "Failed to get your horoscope. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGetFortune = async () => {
-    if (!allChannelsSubscribed) return;
-    
-    setIsLoading(true);
-    hapticFeedback.impact('medium');
-    
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const fortunes = [
-        "A journey of a thousand miles begins with a single step.",
-        "Your future is created by what you do today, not tomorrow.",
-        "The best time to plant a tree was 20 years ago. The second best time is now.",
-        "Believe you can and you're halfway there.",
-        "Success is not final, failure is not fatal: it is the courage to continue that counts."
-      ];
-      
-      const randomFortune = fortunes[Math.floor(Math.random() * fortunes.length)];
-      setTodayFortune(randomFortune);
-      hapticFeedback.notification('success');
-      
-      toast({
-        title: "Fortune Cookie Opened!",
-        description: "Your daily wisdom awaits.",
-      });
-    } catch (error) {
-      hapticFeedback.notification('error');
-      toast({
-        title: "Error",
-        description: "Failed to get your fortune. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCheckSubscription = (channelId: string, username: string) => {
-    checkSubscription(channelId, username);
-  };
-
-  if (showWelcome) {
-    return <WelcomeScreen onGetStarted={handleGetStarted} />;
-  }
-
-  if (channelsLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
       <div className="container mx-auto px-4 py-6">
         {/* Header */}
-        <div className="text-center mb-6">
-          <div className="flex items-center justify-center space-x-2 mb-2">
-            <Sparkles className="h-6 w-6 text-purple-600" />
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-              Astro Cookie
-            </h1>
-          </div>
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+            Mystic Hub
+          </h1>
           {user && (
             <p className="text-gray-600">
-              Welcome, {user.first_name}! ✨
+              Добро пожаловать, {user.first_name}! ✨
             </p>
           )}
+          <p className="text-sm text-gray-500 mt-2">
+            Выберите приложение для получения предсказаний
+          </p>
         </div>
 
-        {/* Channel Requirements */}
-        {channels.length > 0 && !allChannelsSubscribed && (
-          <Card className="mb-6">
+        {/* Apps Grid */}
+        <div className="grid gap-6 md:grid-cols-2 max-w-4xl mx-auto">
+          {/* Druid App */}
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer group">
+            <Link to="/druid" onClick={() => handleAppSelect('druid')}>
+              <CardHeader className="text-center bg-gradient-to-r from-green-50 to-emerald-50 group-hover:from-green-100 group-hover:to-emerald-100 transition-colors">
+                <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-green-200 transition-colors">
+                  <TreePine className="h-8 w-8 text-green-600" />
+                </div>
+                <CardTitle className="text-xl text-green-800">
+                  Друидские Предсказания
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <p className="text-gray-600 text-center mb-4">
+                  Древняя мудрость природы откроет вам тайны будущего
+                </p>
+                <div className="space-y-2 text-sm text-gray-500">
+                  <div className="flex items-center space-x-2">
+                    <Star className="h-4 w-4 text-green-500" />
+                    <span>Персональные гороскопы</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <TreePine className="h-4 w-4 text-green-500" />
+                    <span>Друидская мудрость</span>
+                  </div>
+                </div>
+                <Button className="w-full mt-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
+                  Войти в приложение
+                </Button>
+              </CardContent>
+            </Link>
+          </Card>
+
+          {/* Placeholder for future apps */}
+          <Card className="opacity-60">
+            <CardHeader className="text-center bg-gradient-to-r from-gray-50 to-gray-100">
+              <div className="mx-auto w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4">
+                <Star className="h-8 w-8 text-gray-400" />
+              </div>
+              <CardTitle className="text-xl text-gray-600">
+                Скоро...
+              </CardTitle>
+            </CardHeader>
             <CardContent className="p-6">
-              <ChannelRequirement
-                channels={channels}
-                subscriptions={subscriptions}
-                onCheckSubscription={handleCheckSubscription}
-                isChecking={checkingChannel}
-              />
+              <p className="text-gray-500 text-center mb-4">
+                Новые мистические приложения уже в разработке
+              </p>
+              <Button disabled className="w-full">
+                В разработке
+              </Button>
             </CardContent>
           </Card>
-        )}
+        </div>
 
-        {/* Main Content */}
-        {(channels.length === 0 || allChannelsSubscribed) && (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2 bg-white shadow-sm">
-              <TabsTrigger value="horoscope" className="flex items-center space-x-2">
-                <Star className="h-4 w-4" />
-                <span>Horoscope</span>
-              </TabsTrigger>
-              <TabsTrigger value="fortune" className="flex items-center space-x-2">
-                <Cookie className="h-4 w-4" />
-                <span>Fortune</span>
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="horoscope" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Star className="h-5 w-5 text-purple-600" />
-                    <span>Daily Horoscope</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {!selectedSign && (
-                    <div>
-                      <h3 className="text-lg font-medium mb-4 text-center">
-                        Select Your Zodiac Sign
-                      </h3>
-                      <ZodiacSelector
-                        selectedSign={selectedSign}
-                        onSignSelect={handleSignSelect}
-                      />
-                    </div>
-                  )}
-                  
-                  {selectedSign && !todayHoroscope && (
-                    <div className="text-center space-y-4">
-                      <p className="text-gray-600">
-                        Ready to discover what the stars have in store for you today?
-                      </p>
-                      <Button
-                        onClick={handleGetHoroscope}
-                        disabled={isLoading}
-                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                        size="lg"
-                      >
-                        {isLoading ? (
-                          <>
-                            <LoadingSpinner size="sm" className="mr-2" />
-                            Reading the Stars...
-                          </>
-                        ) : (
-                          <>
-                            <Star className="h-4 w-4 mr-2" />
-                            Get My Horoscope
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {todayHoroscope && selectedSign && (
-                <HoroscopeCard
-                  zodiacSign={selectedSign}
-                  content={todayHoroscope}
-                  date={new Date().toISOString()}
-                />
-              )}
-            </TabsContent>
-
-            <TabsContent value="fortune" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Cookie className="h-5 w-5 text-amber-600" />
-                    <span>Fortune Cookie</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {!todayFortune && (
-                    <div className="text-center space-y-4">
-                      <p className="text-gray-600">
-                        Crack open your daily fortune cookie for a dose of wisdom!
-                      </p>
-                      <Button
-                        onClick={handleGetFortune}
-                        disabled={isLoading}
-                        className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700"
-                        size="lg"
-                      >
-                        {isLoading ? (
-                          <>
-                            <LoadingSpinner size="sm" className="mr-2" />
-                            Opening Cookie...
-                          </>
-                        ) : (
-                          <>
-                            <Cookie className="h-4 w-4 mr-2" />
-                            Get My Fortune
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {todayFortune && (
-                <FortuneCard
-                  content={todayFortune}
-                  date={new Date().toISOString()}
-                />
-              )}
-            </TabsContent>
-          </Tabs>
-        )}
-
-        {/* Reset Button for Demo */}
-        {(todayHoroscope || todayFortune) && (
-          <div className="text-center mt-8">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setTodayHoroscope(null);
-                setTodayFortune(null);
-                setSelectedSign(null);
-                hapticFeedback.impact('light');
-              }}
-            >
-              Reset for Demo
+        {/* Admin Section */}
+        <div className="mt-12 text-center">
+          <Link to="/admin">
+            <Button variant="outline" size="sm" className="text-gray-600">
+              <Settings className="h-4 w-4 mr-2" />
+              Панель администратора
             </Button>
-          </div>
-        )}
+          </Link>
+        </div>
       </div>
     </div>
   );
