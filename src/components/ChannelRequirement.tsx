@@ -4,20 +4,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ExternalLink, Check, X } from 'lucide-react';
-
-interface Channel {
-  id: string;
-  name: string;
-  username: string;
-  invite_link?: string;
-  channel_type: string;
-  required: boolean;
-}
+import type { Channel } from '@/hooks/useChannels';
 
 interface ChannelRequirementProps {
   channels: Channel[];
   subscriptions: Record<string, boolean>;
-  onCheckSubscription: (channelId: string) => void;
+  onCheckSubscription: (channelId: string, username: string) => void;
   isChecking: string | null;
 }
 
@@ -27,22 +19,21 @@ export const ChannelRequirement: React.FC<ChannelRequirementProps> = ({
   onCheckSubscription,
   isChecking
 }) => {
-  const requiredChannels = channels.filter(c => c.required);
-  const allSubscribed = requiredChannels.every(c => subscriptions[c.id]);
+  const allSubscribed = channels.every(c => subscriptions[c.id]);
 
   return (
     <div className="space-y-4">
       <div className="text-center">
         <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          Join Our Channels
+          Присоединяйтесь к нашим каналам
         </h3>
         <p className="text-sm text-gray-600">
-          To access premium features, please join these channels:
+          Для доступа к премиум функциям подпишитесь на эти каналы:
         </p>
       </div>
 
       <div className="space-y-3">
-        {requiredChannels.map((channel) => {
+        {channels.map((channel) => {
           const isSubscribed = subscriptions[channel.id];
           const isCheckingThis = isChecking === channel.id;
           
@@ -78,16 +69,16 @@ export const ChannelRequirement: React.FC<ChannelRequirementProps> = ({
                         onClick={() => window.open(channel.invite_link || `https://t.me/${channel.username}`, '_blank')}
                       >
                         <ExternalLink className="h-3 w-3 mr-1" />
-                        Join
+                        Перейти
                       </Button>
                     )}
                     <Button
                       size="sm"
                       variant={isSubscribed ? "default" : "outline"}
-                      onClick={() => onCheckSubscription(channel.id)}
+                      onClick={() => onCheckSubscription(channel.id, channel.username)}
                       disabled={isCheckingThis}
                     >
-                      {isCheckingThis ? 'Checking...' : isSubscribed ? 'Verified' : 'Check'}
+                      {isCheckingThis ? 'Проверяю...' : isSubscribed ? 'Подтверждено' : 'Проверить'}
                     </Button>
                   </div>
                 </div>
@@ -100,8 +91,8 @@ export const ChannelRequirement: React.FC<ChannelRequirementProps> = ({
       {allSubscribed && (
         <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
           <Check className="h-6 w-6 text-green-600 mx-auto mb-2" />
-          <p className="text-green-800 font-medium">All channels verified!</p>
-          <p className="text-green-600 text-sm">You can now access all features.</p>
+          <p className="text-green-800 font-medium">Все каналы подтверждены!</p>
+          <p className="text-green-600 text-sm">Теперь вы можете использовать все функции.</p>
         </div>
       )}
     </div>
