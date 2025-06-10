@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, Check, X } from 'lucide-react';
+import { ExternalLink, Check, X, Loader2 } from 'lucide-react';
 import type { Channel } from '@/hooks/useChannels';
 
 interface ChannelRequirementProps {
@@ -43,7 +43,11 @@ export const ChannelRequirement: React.FC<ChannelRequirementProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <div className="flex-shrink-0">
-                      {isSubscribed ? (
+                      {isCheckingThis ? (
+                        <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                          <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                        </div>
+                      ) : isSubscribed ? (
                         <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
                           <Check className="h-4 w-4 text-green-600" />
                         </div>
@@ -60,7 +64,7 @@ export const ChannelRequirement: React.FC<ChannelRequirementProps> = ({
                   </div>
                   <div className="flex items-center space-x-2">
                     <Badge variant={channel.channel_type === 'public' ? 'default' : 'secondary'}>
-                      {channel.channel_type}
+                      {channel.channel_type === 'public' ? 'Публичный' : 'Приватный'}
                     </Badge>
                     {!isSubscribed && (
                       <Button
@@ -78,7 +82,19 @@ export const ChannelRequirement: React.FC<ChannelRequirementProps> = ({
                       onClick={() => onCheckSubscription(channel.id, channel.username)}
                       disabled={isCheckingThis}
                     >
-                      {isCheckingThis ? 'Проверяю...' : isSubscribed ? 'Подтверждено' : 'Проверить'}
+                      {isCheckingThis ? (
+                        <>
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          Проверяю...
+                        </>
+                      ) : isSubscribed ? (
+                        <>
+                          <Check className="h-3 w-3 mr-1" />
+                          Подтверждено
+                        </>
+                      ) : (
+                        'Проверить'
+                      )}
                     </Button>
                   </div>
                 </div>
