@@ -9,6 +9,73 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      fortune_requests: {
+        Row: {
+          created_at: string
+          id: string
+          request_date: string
+          response: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          request_date?: string
+          response?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          request_date?: string
+          response?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fortune_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      horoscope_requests: {
+        Row: {
+          created_at: string
+          id: string
+          request_date: string
+          response: string | null
+          user_id: string | null
+          zodiac_sign: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          request_date?: string
+          response?: string | null
+          user_id?: string | null
+          zodiac_sign: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          request_date?: string
+          response?: string | null
+          user_id?: string | null
+          zodiac_sign?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "horoscope_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       required_channels: {
         Row: {
           app_name: string
@@ -42,6 +109,77 @@ export type Database = {
           name?: string
           required?: boolean
           username?: string
+        }
+        Relationships: []
+      }
+      user_subscriptions: {
+        Row: {
+          channel_id: string
+          checked_at: string | null
+          created_at: string
+          id: string
+          is_subscribed: boolean | null
+          user_id: string | null
+        }
+        Insert: {
+          channel_id: string
+          checked_at?: string | null
+          created_at?: string
+          id?: string
+          is_subscribed?: boolean | null
+          user_id?: string | null
+        }
+        Update: {
+          channel_id?: string
+          checked_at?: string | null
+          created_at?: string
+          id?: string
+          is_subscribed?: boolean | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          created_at: string
+          first_name: string | null
+          id: string
+          is_premium: boolean | null
+          language_code: string | null
+          last_name: string | null
+          telegram_id: number
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          is_premium?: boolean | null
+          language_code?: string | null
+          last_name?: string | null
+          telegram_id: number
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          is_premium?: boolean | null
+          language_code?: string | null
+          last_name?: string | null
+          telegram_id?: number
+          updated_at?: string
+          username?: string | null
         }
         Relationships: []
       }
