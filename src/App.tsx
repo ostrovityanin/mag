@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { TelegramProvider } from "@/components/TelegramProvider";
 import { HomePage } from "@/pages/HomePage";
+import { DruidPage } from "@/pages/DruidPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -19,6 +20,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/Druid" element={<DruidPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
