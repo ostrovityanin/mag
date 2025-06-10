@@ -12,6 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Star, Cookie, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useChannels } from '@/hooks/useChannels';
+import { useUserSubscriptions } from '@/hooks/useUserSubscriptions';
 
 export const HomePage: React.FC = () => {
   const { user, hapticFeedback } = useTelegramContext();
@@ -23,38 +25,12 @@ export const HomePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [todayHoroscope, setTodayHoroscope] = useState<string | null>(null);
   const [todayFortune, setTodayFortune] = useState<string | null>(null);
-  const [channels] = useState([
-    {
-      id: '1',
-      name: 'Astro Cookie Updates',
-      username: 'astro_cookie_updates',
-      invite_link: 'https://t.me/astro_cookie_updates',
-      channel_type: 'public',
-      required: true
-    },
-    {
-      id: '2',
-      name: 'Daily Wisdom',
-      username: 'daily_wisdom_channel',
-      invite_link: 'https://t.me/daily_wisdom_channel',
-      channel_type: 'public',
-      required: true
-    }
-  ]);
-  const [subscriptions, setSubscriptions] = useState<Record<string, boolean>>({});
-  const [checkingChannel, setCheckingChannel] = useState<string | null>(null);
+
+  // Используем настоящие хуки вместо локального состояния
+  const { data: channels = [], isLoading: channelsLoading } = useChannels('astro_cookie');
+  const { subscriptions, checkingChannel, checkSubscription } = useUserSubscriptions();
 
   const allChannelsSubscribed = channels.filter(c => c.required).every(c => subscriptions[c.id]);
-
-  useEffect(() => {
-    // Simulate checking existing subscriptions on load
-    setTimeout(() => {
-      setSubscriptions({
-        '1': Math.random() > 0.5,
-        '2': Math.random() > 0.5
-      });
-    }, 1000);
-  }, []);
 
   const handleGetStarted = () => {
     hapticFeedback.impact('light');
@@ -135,50 +111,20 @@ export const HomePage: React.FC = () => {
     }
   };
 
-  const handleCheckSubscription = async (channelId: string) => {
-    setCheckingChannel(channelId);
-    hapticFeedback.impact('light');
-    
-    try {
-      // Simulate API call to check subscription
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Simulate random subscription status
-      const isSubscribed = Math.random() > 0.3;
-      
-      setSubscriptions(prev => ({
-        ...prev,
-        [channelId]: isSubscribed
-      }));
-      
-      if (isSubscribed) {
-        hapticFeedback.notification('success');
-        toast({
-          title: "Subscription Verified!",
-          description: "Thank you for joining our channel.",
-        });
-      } else {
-        hapticFeedback.notification('warning');
-        toast({
-          title: "Not Subscribed",
-          description: "Please join the channel and try again.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      hapticFeedback.notification('error');
-      toast({
-        title: "Check Failed",
-        description: "Unable to verify subscription. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setCheckingChannel(null);
-    }
+  const handleCheckSubscription = (channelId: string, username: string) => {
+    checkSubscription(channelId, username);
   };
 
   if (showWelcome) {
     return <WelcomeScreen onGetStarted={handleGetStarted} />;
+  }
+
+  if (channelsLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
   }
 
   return (
@@ -200,7 +146,7 @@ export const HomePage: React.FC = () => {
         </div>
 
         {/* Channel Requirements */}
-        {!allChannelsSubscribed && (
+        {channels.length > 0 && !allChannelsSubscribed && (
           <Card className="mb-6">
             <CardContent className="p-6">
               <ChannelRequirement
@@ -214,7 +160,7 @@ export const HomePage: React.FC = () => {
         )}
 
         {/* Main Content */}
-        {allChannelsSubscribed && (
+        {(channels.length === 0 || allChannelsSubscribed) && (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-2 bg-white shadow-sm">
               <TabsTrigger value="horoscope" className="flex items-center space-x-2">
