@@ -29,7 +29,7 @@ export const DruidPage: React.FC = () => {
   const { subscriptions, checkingChannel, checkSubscription } = useUserSubscriptions();
 
   const requiredChannels = channels.filter(c => c.required);
-  const allChannelsSubscribed = requiredChannels.every(c => subscriptions[c.id]);
+  const allChannelsSubscribed = requiredChannels.length > 0 && requiredChannels.every(c => subscriptions[c.id]);
 
   const handleSignSelect = (sign: string) => {
     hapticFeedback.selection();
@@ -132,153 +132,180 @@ export const DruidPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Channel Requirements */}
-        {!allChannelsSubscribed && requiredChannels.length > 0 && (
-          <Card className="mb-6">
-            <CardContent className="p-6">
-              <ChannelRequirement
-                channels={requiredChannels}
-                subscriptions={subscriptions}
-                onCheckSubscription={checkSubscription}
-                isChecking={checkingChannel}
-              />
-            </CardContent>
-          </Card>
+        {/* Subscription Requirements Screen */}
+        {!allChannelsSubscribed && (
+          <div className="max-w-2xl mx-auto">
+            <Card className="shadow-lg">
+              <CardHeader className="text-center bg-gradient-to-r from-green-50 to-emerald-50">
+                <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                  <TreePine className="h-8 w-8 text-green-600" />
+                </div>
+                <CardTitle className="text-xl text-green-800">
+                  Доступ к древней мудрости
+                </CardTitle>
+                <p className="text-sm text-green-600 mt-2">
+                  Для получения друидских предсказаний необходимо подписаться на наши каналы
+                </p>
+              </CardHeader>
+              <CardContent className="p-6">
+                {requiredChannels.length > 0 ? (
+                  <ChannelRequirement
+                    channels={requiredChannels}
+                    subscriptions={subscriptions}
+                    onCheckSubscription={checkSubscription}
+                    isChecking={checkingChannel}
+                  />
+                ) : (
+                  <div className="text-center py-8">
+                    <TreePine className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600">
+                      Каналы для подписки не настроены.
+                    </p>
+                    <p className="text-sm text-gray-500 mt-2">
+                      Обратитесь к администратору для настройки каналов.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         )}
 
-        {/* Main Content */}
+        {/* Main Content - Only visible after subscription */}
         {allChannelsSubscribed && (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2 bg-white shadow-sm">
-              <TabsTrigger value="horoscope" className="flex items-center space-x-2">
-                <Star className="h-4 w-4" />
-                <span>Гороскоп</span>
-              </TabsTrigger>
-              <TabsTrigger value="fortune" className="flex items-center space-x-2">
-                <TreePine className="h-4 w-4" />
-                <span>Мудрость</span>
-              </TabsTrigger>
-            </TabsList>
+          <div className="space-y-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+              <TabsList className="grid w-full grid-cols-2 bg-white shadow-sm">
+                <TabsTrigger value="horoscope" className="flex items-center space-x-2">
+                  <Star className="h-4 w-4" />
+                  <span>Гороскоп</span>
+                </TabsTrigger>
+                <TabsTrigger value="fortune" className="flex items-center space-x-2">
+                  <TreePine className="h-4 w-4" />
+                  <span>Мудрость</span>
+                </TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="horoscope" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Star className="h-5 w-5 text-green-600" />
-                    <span>Друидский Гороскоп</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {!selectedSign && (
-                    <div>
-                      <h3 className="text-lg font-medium mb-4 text-center">
-                        Выберите ваш знак зодиака
-                      </h3>
-                      <ZodiacSelector
-                        selectedSign={selectedSign}
-                        onSignSelect={handleSignSelect}
-                      />
-                    </div>
-                  )}
-                  
-                  {selectedSign && !todayHoroscope && (
-                    <div className="text-center space-y-4">
-                      <p className="text-gray-600">
-                        Готовы узнать, что приготовили для вас древние силы природы?
-                      </p>
-                      <Button
-                        onClick={handleGetHoroscope}
-                        disabled={isLoading}
-                        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                        size="lg"
-                      >
-                        {isLoading ? (
-                          <>
-                            <LoadingSpinner size="sm" className="mr-2" />
-                            Читаю знаки природы...
-                          </>
-                        ) : (
-                          <>
-                            <Star className="h-4 w-4 mr-2" />
-                            Получить Гороскоп
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <TabsContent value="horoscope" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Star className="h-5 w-5 text-green-600" />
+                      <span>Друидский Гороскоп</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {!selectedSign && (
+                      <div>
+                        <h3 className="text-lg font-medium mb-4 text-center">
+                          Выберите ваш знак зодиака
+                        </h3>
+                        <ZodiacSelector
+                          selectedSign={selectedSign}
+                          onSignSelect={handleSignSelect}
+                        />
+                      </div>
+                    )}
+                    
+                    {selectedSign && !todayHoroscope && (
+                      <div className="text-center space-y-4">
+                        <p className="text-gray-600">
+                          Готовы узнать, что приготовили для вас древние силы природы?
+                        </p>
+                        <Button
+                          onClick={handleGetHoroscope}
+                          disabled={isLoading}
+                          className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                          size="lg"
+                        >
+                          {isLoading ? (
+                            <>
+                              <LoadingSpinner size="sm" className="mr-2" />
+                              Читаю знаки природы...
+                            </>
+                          ) : (
+                            <>
+                              <Star className="h-4 w-4 mr-2" />
+                              Получить Гороскоп
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-              {todayHoroscope && selectedSign && (
-                <HoroscopeCard
-                  zodiacSign={selectedSign}
-                  content={todayHoroscope}
-                  date={new Date().toISOString()}
-                />
-              )}
-            </TabsContent>
+                {todayHoroscope && selectedSign && (
+                  <HoroscopeCard
+                    zodiacSign={selectedSign}
+                    content={todayHoroscope}
+                    date={new Date().toISOString()}
+                  />
+                )}
+              </TabsContent>
 
-            <TabsContent value="fortune" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <TreePine className="h-5 w-5 text-green-600" />
-                    <span>Друидская Мудрость</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {!todayFortune && (
-                    <div className="text-center space-y-4">
-                      <p className="text-gray-600">
-                        Откройте древнюю мудрость друидов для познания жизни!
-                      </p>
-                      <Button
-                        onClick={handleGetFortune}
-                        disabled={isLoading}
-                        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                        size="lg"
-                      >
-                        {isLoading ? (
-                          <>
-                            <LoadingSpinner size="sm" className="mr-2" />
-                            Получаю мудрость...
-                          </>
-                        ) : (
-                          <>
-                            <TreePine className="h-4 w-4 mr-2" />
-                            Получить Мудрость
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <TabsContent value="fortune" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <TreePine className="h-5 w-5 text-green-600" />
+                      <span>Друидская Мудрость</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {!todayFortune && (
+                      <div className="text-center space-y-4">
+                        <p className="text-gray-600">
+                          Откройте древнюю мудрость друидов для познания жизни!
+                        </p>
+                        <Button
+                          onClick={handleGetFortune}
+                          disabled={isLoading}
+                          className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                          size="lg"
+                        >
+                          {isLoading ? (
+                            <>
+                              <LoadingSpinner size="sm" className="mr-2" />
+                              Получаю мудрость...
+                            </>
+                          ) : (
+                            <>
+                              <TreePine className="h-4 w-4 mr-2" />
+                              Получить Мудрость
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-              {todayFortune && (
-                <FortuneCard
-                  content={todayFortune}
-                  date={new Date().toISOString()}
-                />
-              )}
-            </TabsContent>
-          </Tabs>
-        )}
+                {todayFortune && (
+                  <FortuneCard
+                    content={todayFortune}
+                    date={new Date().toISOString()}
+                  />
+                )}
+              </TabsContent>
+            </Tabs>
 
-        {/* Reset Button for Demo */}
-        {(todayHoroscope || todayFortune) && (
-          <div className="text-center mt-8">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setTodayHoroscope(null);
-                setTodayFortune(null);
-                setSelectedSign(null);
-                hapticFeedback.impact('light');
-              }}
-            >
-              Сбросить для демо
-            </Button>
+            {/* Reset Button for Demo */}
+            {(todayHoroscope || todayFortune) && (
+              <div className="text-center mt-8">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setTodayHoroscope(null);
+                    setTodayFortune(null);
+                    setSelectedSign(null);
+                    hapticFeedback.impact('light');
+                  }}
+                >
+                  Сбросить для демо
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
