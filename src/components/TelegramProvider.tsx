@@ -25,24 +25,26 @@ export const TelegramProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   // Детальное логирование только реальных данных пользователя
   React.useEffect(() => {
-    console.log('=== TELEGRAM WEBAPP СОСТОЯНИЕ ===');
+    console.log('=== TELEGRAM PROVIDER СОСТОЯНИЕ ===');
     console.log('WebApp доступен:', !!telegramData.webApp);
-    console.log('Загрузка:', telegramData.isLoading);
+    console.log('Загрузка завершена:', !telegramData.isLoading);
     
     if (telegramData.user) {
-      console.log('=== РЕАЛЬНЫЙ ПОЛЬЗОВАТЕЛЬ TELEGRAM ===');
-      console.log('Полный объект пользователя:', JSON.stringify(telegramData.user, null, 2));
+      console.log('=== ПОЛЬЗОВАТЕЛЬ НАЙДЕН В PROVIDER ===');
       console.log('ID пользователя:', telegramData.user.id);
       console.log('Тип ID пользователя:', typeof telegramData.user.id);
       console.log('Username:', telegramData.user.username);
       console.log('Имя:', telegramData.user.first_name);
       console.log('Фамилия:', telegramData.user.last_name);
     } else if (!telegramData.isLoading) {
-      console.log('=== ПОЛЬЗОВАТЕЛЬ TELEGRAM НЕ НАЙДЕН ===');
+      console.log('=== ПОЛЬЗОВАТЕЛЬ НЕ НАЙДЕН В PROVIDER ===');
       console.log('WebApp инициализирован:', !!telegramData.webApp);
-      console.log('Причина: Приложение запущено вне Telegram WebApp или пользователь не авторизован');
+      if (telegramData.webApp) {
+        console.log('InitData присутствует:', !!telegramData.webApp.initData);
+        console.log('InitDataUnsafe присутствует:', !!telegramData.webApp.initDataUnsafe);
+      }
     }
-    console.log('=== КОНЕЦ ДАННЫХ ПОЛЬЗОВАТЕЛЯ ===');
+    console.log('=== КОНЕЦ PROVIDER ЛОГОВ ===');
   }, [telegramData.user, telegramData.isLoading, telegramData.webApp]);
 
   return (

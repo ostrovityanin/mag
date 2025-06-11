@@ -6,7 +6,7 @@ import { useTelegramContext } from '@/components/TelegramProvider';
 import { useToast } from '@/hooks/use-toast';
 
 export const useUserSubscriptions = () => {
-  const { user } = useTelegramContext();
+  const { user, webApp } = useTelegramContext();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [subscriptions, setSubscriptions] = useState<Record<string, boolean>>({});
@@ -14,9 +14,18 @@ export const useUserSubscriptions = () => {
 
   const checkSubscriptionMutation = useMutation({
     mutationFn: async ({ channelId, username }: { channelId: string; username: string }) => {
-      // Строгая проверка наличия реального пользователя Telegram
+      // Более детальная проверка наличия пользователя
       if (!user?.id) {
-        throw new Error('Для проверки подписки необходимо запустить приложение в Telegram WebApp');
+        console.error('=== ОШИБКА: ПОЛЬЗОВАТЕЛЬ НЕ НАЙДЕН ===');
+        console.error('user объект:', user);
+        console.error('webApp объект доступен:', !!webApp);
+        
+        if (webApp) {
+          console.error('WebApp initData:', webApp.initData);
+          console.error('WebApp initDataUnsafe:', webApp.initDataUnsafe);
+        }
+        
+        throw new Error('Пользователь Telegram не найден. Убедитесь, что приложение запущено через бота.');
       }
       
       console.log('=== НАЧАЛО ПРОВЕРКИ ПОДПИСКИ ===');
@@ -112,12 +121,18 @@ export const useUserSubscriptions = () => {
   });
 
   const checkSubscription = useCallback((channelId: string, username: string) => {
-    // Проверяем наличие реального пользователя
+    // Проверяем наличие пользователя с детальным логированием
+    console.log('=== ПРОВЕРКА ПОЛЬЗОВАТЕЛЯ ПЕРЕД ЗАПРОСОМ ===');
+    console.log('user объект:', user);
+    console.log('user.id:', user?.id);
+    console.log('Тип user.id:', typeof user?.id);
+    console.log('webApp доступен:', !!webApp);
+    
     if (!user?.id) {
-      console.error('Попытка проверки подписки без пользователя Telegram');
+      console.error('=== ОТКЛОНЕНИЕ ЗАПРОСА: НЕТ ПОЛЬЗОВАТЕЛЯ ===');
       toast({
         title: "Ошибка авторизации",
-        description: "Запустите приложение в Telegram для проверки подписок",
+        description: "Данные пользователя Telegram не найдены. Перезапустите приложение из бота.",
         variant: "destructive",
       });
       return;
@@ -129,7 +144,7 @@ export const useUserSubscriptions = () => {
     
     setCheckingChannel(channelId);
     checkSubscriptionMutation.mutate({ channelId, username });
-  }, [checkSubscriptionMutation, user, toast]);
+  }, [checkSubscriptionMutation, user, webApp, toast]);
 
   return {
     subscriptions,
