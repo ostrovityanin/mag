@@ -8,7 +8,7 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Star, TreePine } from 'lucide-react';
+import { Star, TreePine, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { TelegramUser } from '@/types/telegram';
 
@@ -22,19 +22,32 @@ export const DruidPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [todayHoroscope, setTodayHoroscope] = useState<string | null>(null);
   const [todayFortune, setTodayFortune] = useState<string | null>(null);
+  const [isTelegramWebApp, setIsTelegramWebApp] = useState(false);
 
-  // Проверяем аутентификацию через Telegram WebApp
+  // Проверяем среду выполнения и аутентификацию
   React.useEffect(() => {
-    if (window.Telegram?.WebApp) {
+    console.log('=== ПРОВЕРКА СРЕДЫ ВЫПОЛНЕНИЯ ===');
+    
+    // Проверяем, запущено ли приложение в Telegram WebApp
+    const isInTelegram = !!(window.Telegram?.WebApp);
+    setIsTelegramWebApp(isInTelegram);
+    
+    console.log('Запущено в Telegram WebApp:', isInTelegram);
+    
+    if (isInTelegram) {
       const tg = window.Telegram.WebApp;
       tg.ready();
       tg.expand();
       
       const initUser: TelegramUser = tg.initDataUnsafe?.user;
+      console.log('Пользователь из Telegram:', initUser);
+      
       if (initUser && initUser.id) {
         setUser(initUser);
         setIsAuthenticated(true);
       }
+    } else {
+      console.log('Приложение запущено НЕ в Telegram WebApp');
     }
   }, []);
 
@@ -101,12 +114,51 @@ export const DruidPage: React.FC = () => {
     }
   };
 
-  // Если пользователь не аутентифицирован, показываем простую аутентификацию
+  // Если НЕ в Telegram WebApp - показываем предупреждение
+  if (!isTelegramWebApp) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
+        <div className="container mx-auto px-4 py-6">
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center space-x-2 mb-4">
+              <TreePine className="h-8 w-8 text-green-600" />
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                Друидские Предсказания
+              </h1>
+            </div>
+          </div>
+
+          <Card className="max-w-md mx-auto">
+            <CardHeader className="text-center">
+              <CardTitle className="flex items-center justify-center space-x-2 text-amber-600">
+                <AlertTriangle className="h-5 w-5" />
+                <span>Требуется Telegram WebApp</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              <p className="text-gray-600">
+                Это приложение работает только в среде Telegram WebApp.
+              </p>
+              <p className="text-sm text-gray-500">
+                Для доступа к друидским предсказаниям откройте приложение через Telegram бота.
+              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-800">
+                  Найдите наш бот в Telegram и запустите приложение оттуда!
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Если в Telegram WebApp, но пользователь не аутентифицирован
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
         <div className="container mx-auto px-4 py-6">
-          {/* Минималистичный заголовок */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center space-x-2 mb-4">
               <TreePine className="h-8 w-8 text-green-600" />
@@ -119,17 +171,16 @@ export const DruidPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Простая аутентификация */}
           <SimpleTelegramAuth />
         </div>
       </div>
     );
   }
 
+  // Основное приложение для аутентифицированных пользователей в Telegram WebApp
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
       <div className="container mx-auto px-4 py-6">
-        {/* Минималистичный заголовок */}
         <div className="text-center mb-6">
           <div className="flex items-center justify-center space-x-2 mb-2">
             <TreePine className="h-6 w-6 text-green-600" />
@@ -144,7 +195,6 @@ export const DruidPage: React.FC = () => {
           )}
         </div>
 
-        {/* Основной контент */}
         <div className="space-y-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-2 bg-white shadow-sm">
@@ -262,7 +312,6 @@ export const DruidPage: React.FC = () => {
             </TabsContent>
           </Tabs>
 
-          {/* Кнопка сброса для демо */}
           {(todayHoroscope || todayFortune) && (
             <div className="text-center mt-8">
               <Button
