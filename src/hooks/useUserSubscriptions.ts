@@ -22,21 +22,58 @@ export const useUserSubscriptions = () => {
       console.log('Telegram ID пользователя:', authenticatedUser.telegram_id);
 
       try {
-        // Вызываем функцию проверки подписок
-        const { data, error } = await supabase.functions.invoke('check-telegram-subscription', {
-          body: {
-            userId: authenticatedUser.telegram_id.toString(),
-            username: authenticatedUser.username || '',
-          },
-        });
+        // Получаем все каналы
+        const { data: channels, error: channelsError } = await supabase
+          .from('required_channels')
+          .select('*')
+          .eq('required', true);
 
-        if (error) {
-          console.error('Ошибка функции проверки подписок:', error);
-          throw error;
+        if (channelsError) {
+          console.error('Ошибка получения каналов:', channelsError);
+          throw channelsError;
         }
 
-        console.log('Результат проверки подписок:', data);
-        return data;
+        if (!channels || channels.length === 0) {
+          console.log('Нет обязательных каналов для проверки');
+          return {
+            subscriptions: {},
+            hasUnsubscribedChannels: false
+          };
+        }
+
+        // Проверяем подписки для каждого канала
+        const subscriptions: Record<string, boolean> = {};
+        let hasUnsubscribedChannels = false;
+
+        for (const channel of channels) {
+          try {
+            const { data, error } = await supabase.functions.invoke('check-telegram-subscription', {
+              body: {
+                userId: authenticatedUser.telegram_id.toString(),
+                channelId: channel.id,
+                username: authenticatedUser.username || '',
+              },
+            });
+
+            if (error) {
+              console.error(`Ошибка проверки канала ${channel.id}:`, error);
+              subscriptions[channel.id] = false;
+              hasUnsubscribedChannels = true;
+            } else {
+              subscriptions[channel.id] = data?.isSubscribed || false;
+              if (!data?.isSubscribed) {
+                hasUnsubscribedChannels = true;
+              }
+            }
+          } catch (error) {
+            console.error(`Ошибка при проверке канала ${channel.id}:`, error);
+            subscriptions[channel.id] = false;
+            hasUnsubscribedChannels = true;
+          }
+        }
+
+        console.log('Результат проверки подписок:', { subscriptions, hasUnsubscribedChannels });
+        return { subscriptions, hasUnsubscribedChannels };
       } catch (error) {
         console.error('Ошибка при проверке подписок:', error);
         throw error;
@@ -47,15 +84,35 @@ export const useUserSubscriptions = () => {
     refetchInterval: 10 * 60 * 1000, // 10 минут
   });
 
-  const checkSubscription = async (channelId: string) => {
+  const checkSubscription = async (channelId: string, username: string) => {
     if (!authenticatedUser) return;
     
     setCheckingChannel(channelId);
     try {
-      // Повторная проверка конкретного канала
+      console.log('=== ПРОВЕРКА ОТДЕЛЬНОГО КАНАЛА ===');
+      console.log('Channel ID:', channelId);
+      console.log('Username:', username);
+      
+      const { data, error } = await supabase.functions.invoke('check-telegram-subscription', {
+        body: {
+          userId: authenticatedUser.telegram_id.toString(),
+          channelId: channelId,
+          username: authenticatedUser.username || '',
+        },
+      });
+
+      if (error) {
+        console.error('Ошибка проверки канала:', error);
+      } else {
+        console.log('Результат проверки канала:', data);
+      }
+
+      // Обновляем кэш
       await queryClient.invalidateQueries({
         queryKey: ['user-subscriptions', authenticatedUser.id]
       });
+    } catch (error) {
+      console.error('Ошибка при проверке канала:', error);
     } finally {
       setCheckingChannel(null);
     }

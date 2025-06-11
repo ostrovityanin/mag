@@ -79,7 +79,10 @@ export const ChannelRequirement: React.FC<ChannelRequirementProps> = ({
                     <Button
                       size="sm"
                       variant={isSubscribed ? "default" : "outline"}
-                      onClick={() => onCheckSubscription(channel.id, channel.username)}
+                      onClick={() => {
+                        console.log('Нажата кнопка проверки для канала:', channel.id, channel.username);
+                        onCheckSubscription(channel.id, channel.username);
+                      }}
                       disabled={isCheckingThis}
                     >
                       {isCheckingThis ? (
