@@ -13,6 +13,7 @@ const SimpleTelegramAuth: React.FC = () => {
   const [subscribed, setSubscribed] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [telegramWebAppReady, setTelegramWebAppReady] = useState(false);
 
   const CHANNEL_ID = '@luizahey'; // Канал для проверки подписки
 
@@ -31,34 +32,84 @@ const SimpleTelegramAuth: React.FC = () => {
     }
   };
 
+  const waitForTelegramWebApp = (): Promise<void> => {
+    return new Promise((resolve) => {
+      const checkTelegram = () => {
+        if (window.Telegram?.WebApp) {
+          console.log('Telegram WebApp готов');
+          setTelegramWebAppReady(true);
+          resolve();
+        } else {
+          console.log('Ждем загрузки Telegram WebApp...');
+          setTimeout(checkTelegram, 100);
+        }
+      };
+      checkTelegram();
+    });
+  };
+
   useEffect(() => {
     console.log('=== ИНИЦИАЛИЗАЦИЯ ПРОСТОЙ TELEGRAM AUTH ===');
     
-    // Попытка получить данные пользователя из Telegram WebApp
-    if (window.Telegram?.WebApp) {
-      const tg = window.Telegram.WebApp;
-      console.log('Telegram WebApp найден:', tg);
+    const initTelegramAuth = async () => {
+      // Ждем загрузки Telegram WebApp SDK
+      await waitForTelegramWebApp();
       
-      tg.ready();
-      tg.expand();
-      
-      const initUser: TelegramUser = tg.initDataUnsafe?.user;
-      console.log('Данные пользователя из Telegram:', initUser);
-      
-      if (initUser && initUser.id) {
-        setUser(initUser);
-        handleCheckSubscription(initUser.id);
+      if (window.Telegram?.WebApp) {
+        const tg = window.Telegram.WebApp;
+        console.log('Telegram WebApp найден:', tg);
+        
+        // Инициализируем WebApp
+        tg.ready();
+        tg.expand();
+        
+        const initUser: TelegramUser = tg.initDataUnsafe?.user;
+        console.log('Данные пользователя из Telegram:', initUser);
+        
+        if (initUser && initUser.id) {
+          setUser(initUser);
+          handleCheckSubscription(initUser.id);
+        } else {
+          console.warn('Пользователь не найден в Telegram WebApp');
+        }
       } else {
-        console.warn('Пользователь не найден в Telegram WebApp');
+        console.warn('Telegram WebApp не доступен');
       }
-    } else {
-      console.warn('Telegram WebApp не доступен');
-    }
+    };
+
+    initTelegramAuth();
   }, []);
 
-  const handleLoginClick = () => {
-    console.log('Клик по кнопке входа');
-    alert('Для полной функциональности запустите приложение в Telegram WebApp');
+  const handleTelegramLogin = () => {
+    console.log('Начинаем аутентификацию через Telegram WebApp');
+    
+    if (!window.Telegram?.WebApp) {
+      console.error('Telegram WebApp не доступен');
+      setError('Telegram WebApp не загружен. Пожалуйста, запустите приложение в Telegram.');
+      return;
+    }
+
+    const tg = window.Telegram.WebApp;
+    
+    // Создаем URL для Telegram логина
+    const botUsername = 'your_bot_username'; // Замените на имя вашего бота
+    const loginUrl = `https://oauth.telegram.org/auth?bot_id=${botUsername}&origin=${window.location.origin}&request_access=write`;
+    
+    try {
+      // Используем правильный метод WebApp для открытия логина
+      if (tg.openTelegramLink) {
+        tg.openTelegramLink(loginUrl);
+      } else if (tg.openLink) {
+        tg.openLink(loginUrl);
+      } else {
+        console.warn('openTelegramLink недоступен, используем fallback');
+        // Fallback для старых версий
+        window.location.href = loginUrl;
+      }
+    } catch (err) {
+      console.error('Ошибка при открытии Telegram логина:', err);
+      setError('Не удалось инициировать вход через Telegram');
+    }
   };
 
   const handleManualCheck = () => {
@@ -121,11 +172,27 @@ const SimpleTelegramAuth: React.FC = () => {
             Для использования приложения необходима авторизация через Telegram
           </CardDescription>
         </CardHeader>
-        <CardContent className="text-center">
-          <Button onClick={handleLoginClick} className="w-full">
-            Войти через Telegram
-          </Button>
-          <p className="text-sm text-gray-500 mt-4">
+        <CardContent className="text-center space-y-4">
+          {!telegramWebAppReady && (
+            <div className="flex items-center justify-center space-x-2 text-blue-600">
+              <LoadingSpinner className="h-4 w-4" />
+              <span>Загрузка Telegram WebApp...</span>
+            </div>
+          )}
+          
+          {telegramWebAppReady && (
+            <Button onClick={handleTelegramLogin} className="w-full">
+              Войти через Telegram
+            </Button>
+          )}
+          
+          {error && (
+            <div className="text-sm text-red-600 bg-red-50 p-3 rounded">
+              {error}
+            </div>
+          )}
+          
+          <p className="text-sm text-gray-500">
             Приложение работает в среде Telegram WebApp
           </p>
         </CardContent>
