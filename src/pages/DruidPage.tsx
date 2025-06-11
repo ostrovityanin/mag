@@ -1,5 +1,7 @@
+
 import React, { useState } from 'react';
 import { useTelegramContext } from '@/components/TelegramProvider';
+import { TelegramLoginButton } from '@/components/TelegramLoginButton';
 import { ZodiacSelector } from '@/components/ui/zodiac-selector';
 import { HoroscopeCard } from '@/components/HoroscopeCard';
 import { FortuneCard } from '@/components/FortuneCard';
@@ -14,7 +16,7 @@ import { useChannels } from '@/hooks/useChannels';
 import { useUserSubscriptions } from '@/hooks/useUserSubscriptions';
 
 export const DruidPage: React.FC = () => {
-  const { user, hapticFeedback } = useTelegramContext();
+  const { user, isAuthenticated, hapticFeedback } = useTelegramContext();
   const { toast } = useToast();
   
   const [selectedSign, setSelectedSign] = useState<string | null>(null);
@@ -42,6 +44,48 @@ export const DruidPage: React.FC = () => {
 
   const requiredChannels = channels.filter(c => c.required);
   const allChannelsSubscribed = requiredChannels.length > 0 && requiredChannels.every(c => subscriptions[c.id]);
+
+  // Если пользователь не аутентифицирован, показываем экран входа
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
+        <div className="container mx-auto px-4 py-6">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center space-x-2 mb-2">
+              <TreePine className="h-6 w-6 text-green-600" />
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                Друидские Предсказания
+              </h1>
+            </div>
+            <p className="text-sm text-gray-500 mt-2">
+              Древняя мудрость природы откроет вам тайны будущего
+            </p>
+          </div>
+
+          {/* Login Screen */}
+          <div className="max-w-md mx-auto">
+            <Card className="shadow-lg">
+              <CardHeader className="text-center bg-gradient-to-r from-green-50 to-emerald-50">
+                <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                  <TreePine className="h-8 w-8 text-green-600" />
+                </div>
+                <CardTitle className="text-xl text-green-800">
+                  Добро пожаловать!
+                </CardTitle>
+                <p className="text-sm text-green-600 mt-2">
+                  Войдите, чтобы получить доступ к друидским предсказаниям
+                </p>
+              </CardHeader>
+              <CardContent className="p-8">
+                <TelegramLoginButton />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleSignSelect = (sign: string) => {
     hapticFeedback.selection();
