@@ -6,22 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { User, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { checkUserSubscription } from '@/utils/subscriptionApi';
-
-declare global {
-  interface Window {
-    Telegram?: any;
-  }
-}
-
-type TgUser = {
-  id: number;
-  first_name: string;
-  last_name?: string;
-  username?: string;
-};
+import { TelegramUser } from '@/types/telegram';
 
 const SimpleTelegramAuth: React.FC = () => {
-  const [user, setUser] = useState<TgUser | null>(null);
+  const [user, setUser] = useState<TelegramUser | null>(null);
   const [subscribed, setSubscribed] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +42,7 @@ const SimpleTelegramAuth: React.FC = () => {
       tg.ready();
       tg.expand();
       
-      const initUser: TgUser = tg.initDataUnsafe?.user;
+      const initUser: TelegramUser = tg.initDataUnsafe?.user;
       console.log('Данные пользователя из Telegram:', initUser);
       
       if (initUser && initUser.id) {
@@ -65,18 +53,6 @@ const SimpleTelegramAuth: React.FC = () => {
       }
     } else {
       console.warn('Telegram WebApp не доступен');
-      // Для разработки создаем тестового пользователя
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Режим разработки: создаем тестового пользователя');
-        const testUser: TgUser = {
-          id: Date.now(), // Используем текущее время как ID
-          first_name: 'Разработчик',
-          last_name: 'Тест',
-          username: 'developer',
-        };
-        setUser(testUser);
-        setSubscribed(true); // В режиме разработки считаем подписанным
-      }
     }
   }, []);
 
