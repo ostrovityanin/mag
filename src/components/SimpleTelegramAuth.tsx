@@ -80,35 +80,23 @@ const SimpleTelegramAuth: React.FC = () => {
     initTelegramAuth();
   }, []);
 
-  const handleTelegramLogin = () => {
-    console.log('Начинаем аутентификацию через Telegram WebApp');
+  const handleRefreshData = () => {
+    console.log('Обновление данных пользователя');
     
     if (!window.Telegram?.WebApp) {
-      console.error('Telegram WebApp не доступен');
-      setError('Telegram WebApp не загружен. Пожалуйста, запустите приложение в Telegram.');
+      setError('Telegram WebApp не доступен. Приложение должно запускаться в Telegram.');
       return;
     }
 
     const tg = window.Telegram.WebApp;
+    const initUser: TelegramUser = tg.initDataUnsafe?.user;
     
-    // Создаем URL для Telegram логина
-    const botUsername = 'your_bot_username'; // Замените на имя вашего бота
-    const loginUrl = `https://oauth.telegram.org/auth?bot_id=${botUsername}&origin=${window.location.origin}&request_access=write`;
-    
-    try {
-      // Используем правильный метод WebApp для открытия логина
-      if (tg.openTelegramLink) {
-        tg.openTelegramLink(loginUrl);
-      } else if (tg.openLink) {
-        tg.openLink(loginUrl);
-      } else {
-        console.warn('openTelegramLink недоступен, используем fallback');
-        // Fallback для старых версий
-        window.location.href = loginUrl;
-      }
-    } catch (err) {
-      console.error('Ошибка при открытии Telegram логина:', err);
-      setError('Не удалось инициировать вход через Telegram');
+    if (initUser && initUser.id) {
+      setUser(initUser);
+      handleCheckSubscription(initUser.id);
+      setError(null);
+    } else {
+      setError('Не удалось получить данные пользователя из Telegram');
     }
   };
 
@@ -159,17 +147,17 @@ const SimpleTelegramAuth: React.FC = () => {
     );
   };
 
-  // Если пользователь не найден - показываем кнопку входа
+  // Если пользователь не найден - показываем информацию
   if (!user) {
     return (
       <Card className="max-w-md mx-auto mt-8">
         <CardHeader className="text-center">
           <CardTitle className="flex items-center justify-center space-x-2">
             <User className="h-5 w-5" />
-            <span>Вход в приложение</span>
+            <span>Telegram WebApp</span>
           </CardTitle>
           <CardDescription>
-            Для использования приложения необходима авторизация через Telegram
+            Приложение для работы в среде Telegram
           </CardDescription>
         </CardHeader>
         <CardContent className="text-center space-y-4">
@@ -181,9 +169,14 @@ const SimpleTelegramAuth: React.FC = () => {
           )}
           
           {telegramWebAppReady && (
-            <Button onClick={handleTelegramLogin} className="w-full">
-              Войти через Telegram
-            </Button>
+            <div className="space-y-3">
+              <p className="text-sm text-yellow-600">
+                Данные пользователя не найдены
+              </p>
+              <Button onClick={handleRefreshData} variant="outline" className="w-full">
+                Обновить данные
+              </Button>
+            </div>
           )}
           
           {error && (
@@ -192,8 +185,8 @@ const SimpleTelegramAuth: React.FC = () => {
             </div>
           )}
           
-          <p className="text-sm text-gray-500">
-            Приложение работает в среде Telegram WebApp
+          <p className="text-xs text-gray-500">
+            Это приложение работает только в среде Telegram WebApp
           </p>
         </CardContent>
       </Card>
