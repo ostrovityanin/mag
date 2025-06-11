@@ -14,20 +14,20 @@ export const useUserSubscriptions = () => {
 
   const checkSubscriptionMutation = useMutation({
     mutationFn: async ({ channelId, username }: { channelId: string; username: string }) => {
-      // Используем тестового пользователя, если реального нет
-      const userId = user?.id || 123456789;
-      const isTestUser = !user || userId === 123456789;
+      // Проверяем, что пользователь авторизован через Telegram
+      if (!user?.id) {
+        throw new Error('Пользователь не авторизован через Telegram WebApp');
+      }
       
-      console.log('=== ОТЛАДКА ПРОВЕРКИ ПОДПИСКИ ===');
-      console.log('Оригинальный объект пользователя:', user);
-      console.log('Используемый user ID:', userId);
-      console.log('Тип user ID:', typeof userId);
-      console.log('Тестовый режим:', isTestUser);
+      console.log('=== ПРОВЕРКА ПОДПИСКИ РЕАЛЬНОГО ПОЛЬЗОВАТЕЛЯ ===');
+      console.log('Telegram пользователь:', user);
+      console.log('User ID:', user.id);
+      console.log('Тип user ID:', typeof user.id);
       console.log('ID канала:', channelId);
       console.log('Username канала:', username);
 
       const requestBody = {
-        userId: userId.toString(),
+        userId: user.id.toString(),
         channelId: channelId,
         username: username
       };
@@ -60,12 +60,11 @@ export const useUserSubscriptions = () => {
       return { 
         channelId, 
         isSubscribed: data.isSubscribed,
-        isTestMode: data.isTestMode,
         debug: data.debug
       };
     },
-    onSuccess: ({ channelId, isSubscribed, isTestMode, debug }) => {
-      console.log('Проверка подписки успешна:', { channelId, isSubscribed, isTestMode });
+    onSuccess: ({ channelId, isSubscribed, debug }) => {
+      console.log('Проверка подписки успешна:', { channelId, isSubscribed });
       
       if (debug) {
         console.log('Дополнительная отладочная информация:', debug);
@@ -81,16 +80,12 @@ export const useUserSubscriptions = () => {
       if (isSubscribed) {
         toast({
           title: "Подписка подтверждена!",
-          description: isTestMode 
-            ? "Тестовый режим: подписка эмулирована для разработки." 
-            : "Спасибо за подписку на канал.",
+          description: "Спасибо за подписку на канал.",
         });
       } else {
         toast({
           title: "Подписка не найдена",
-          description: isTestMode 
-            ? "Тестовый режим: для демонстрации подписка не найдена." 
-            : "Пожалуйста, подпишитесь на канал и попробуйте снова.",
+          description: "Пожалуйста, подпишитесь на канал и попробуйте снова.",
           variant: "destructive",
         });
       }
@@ -109,10 +104,19 @@ export const useUserSubscriptions = () => {
   });
 
   const checkSubscription = useCallback((channelId: string, username: string) => {
-    console.log('Инициирую проверку подписки для:', { channelId, username });
+    if (!user?.id) {
+      toast({
+        title: "Ошибка авторизации",
+        description: "Пользователь не авторизован через Telegram WebApp",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    console.log('Инициирую проверку подписки для:', { channelId, username, userId: user.id });
     setCheckingChannel(channelId);
     checkSubscriptionMutation.mutate({ channelId, username });
-  }, [checkSubscriptionMutation]);
+  }, [checkSubscriptionMutation, user?.id, toast]);
 
   return {
     subscriptions,
