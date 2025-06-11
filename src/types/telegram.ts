@@ -71,6 +71,8 @@ export interface TelegramWebApp {
     notificationOccurred: (type: 'error' | 'success' | 'warning') => void;
     selectionChanged: () => void;
   };
+  openLoginUrl?: (url: string, options?: { request_access?: 'write' }) => void;
+  openChat?: (chatId: string) => void;
   expand: () => void;
   close: () => void;
   ready: () => void;
