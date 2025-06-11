@@ -29,7 +29,7 @@ export const DruidPage: React.FC = () => {
   const { 
     data: subscriptionData,
     subscriptions, 
-    checkingChannel, 
+    isChecking, 
     checkSubscription,
     isLoading: subscriptionsLoading 
   } = useUserSubscriptions();

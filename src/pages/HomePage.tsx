@@ -26,7 +26,7 @@ export const HomePage: React.FC = () => {
     isLoading: subscriptionsLoading, 
     error: subscriptionsError,
     subscriptions,
-    checkingChannel,
+    isChecking,
     checkSubscription
   } = useUserSubscriptions();
 
@@ -111,7 +111,7 @@ export const HomePage: React.FC = () => {
         channels={channels.filter(c => c.required)} 
         subscriptions={subscriptions}
         onCheckSubscription={checkSubscription}
-        isChecking={checkingChannel}
+        isChecking={isChecking}
       />
     );
   }
