@@ -1,12 +1,15 @@
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTelegramContext } from '@/components/TelegramProvider';
+import { useState } from 'react';
 
 export const useUserSubscriptions = () => {
   const { authenticatedUser, isAuthenticated } = useTelegramContext();
+  const queryClient = useQueryClient();
+  const [checkingChannel, setCheckingChannel] = useState<string | null>(null);
 
-  return useQuery({
+  const subscriptionQuery = useQuery({
     queryKey: ['user-subscriptions', authenticatedUser?.id],
     queryFn: async () => {
       if (!isAuthenticated || !authenticatedUser) {
@@ -43,4 +46,33 @@ export const useUserSubscriptions = () => {
     staleTime: 5 * 60 * 1000, // 5 минут
     refetchInterval: 10 * 60 * 1000, // 10 минут
   });
+
+  const checkSubscription = async (channelId: string) => {
+    if (!authenticatedUser) return;
+    
+    setCheckingChannel(channelId);
+    try {
+      // Повторная проверка конкретного канала
+      await queryClient.invalidateQueries({
+        queryKey: ['user-subscriptions', authenticatedUser.id]
+      });
+    } finally {
+      setCheckingChannel(null);
+    }
+  };
+
+  // Создаем объект subscriptions из данных ответа
+  const subscriptions: Record<string, boolean> = {};
+  if (subscriptionQuery.data?.subscriptions) {
+    Object.keys(subscriptionQuery.data.subscriptions).forEach(channelId => {
+      subscriptions[channelId] = subscriptionQuery.data.subscriptions[channelId];
+    });
+  }
+
+  return {
+    ...subscriptionQuery,
+    subscriptions,
+    checkingChannel,
+    checkSubscription,
+  };
 };

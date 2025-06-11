@@ -26,7 +26,13 @@ export const DruidPage: React.FC = () => {
 
   // Загружаем каналы для друидского приложения
   const { data: channels = [], isLoading: channelsLoading } = useChannels('druid_horoscope');
-  const { subscriptions, checkingChannel, checkSubscription } = useUserSubscriptions();
+  const { 
+    data: subscriptionData,
+    subscriptions, 
+    checkingChannel, 
+    checkSubscription,
+    isLoading: subscriptionsLoading 
+  } = useUserSubscriptions();
 
   const requiredChannels = channels.filter(c => c.required);
   const allChannelsSubscribed = requiredChannels.length > 0 && requiredChannels.every(c => subscriptions[c.id]);
@@ -103,7 +109,7 @@ export const DruidPage: React.FC = () => {
     }
   };
 
-  if (channelsLoading) {
+  if (channelsLoading || subscriptionsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center">
         <LoadingSpinner size="lg" />

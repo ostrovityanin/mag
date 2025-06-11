@@ -6,6 +6,7 @@ import { HoroscopeCard } from '@/components/HoroscopeCard';
 import { FortuneCard } from '@/components/FortuneCard';
 import { useTelegramContext } from '@/components/TelegramProvider';
 import { useUserSubscriptions } from '@/hooks/useUserSubscriptions';
+import { useChannels } from '@/hooks/useChannels';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertCircle, User, LogOut } from 'lucide-react';
@@ -23,8 +24,18 @@ export const HomePage: React.FC = () => {
   const { 
     data: subscriptionData, 
     isLoading: subscriptionsLoading, 
-    error: subscriptionsError 
+    error: subscriptionsError,
+    subscriptions,
+    checkingChannel,
+    checkSubscription
   } = useUserSubscriptions();
+
+  const { data: channels = [], isLoading: channelsLoading } = useChannels();
+
+  const handleGetStarted = () => {
+    // Логика начала работы с приложением
+    console.log('Пользователь начал работу с приложением');
+  };
 
   // Показываем загрузку, пока инициализируется Telegram или проходит аутентификация
   if (telegramLoading) {
@@ -58,11 +69,11 @@ export const HomePage: React.FC = () => {
 
   // Показываем приветственный экран, если пользователь не аутентифицирован
   if (!isAuthenticated) {
-    return <WelcomeScreen />;
+    return <WelcomeScreen onGetStarted={handleGetStarted} />;
   }
 
   // Показываем загрузку при проверке подписок
-  if (subscriptionsLoading) {
+  if (subscriptionsLoading || channelsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
         <div className="text-center">
@@ -95,7 +106,14 @@ export const HomePage: React.FC = () => {
 
   // Если есть неподтвержденные каналы, показываем требования
   if (subscriptionData?.hasUnsubscribedChannels) {
-    return <ChannelRequirement />;
+    return (
+      <ChannelRequirement 
+        channels={channels.filter(c => c.required)} 
+        subscriptions={subscriptions}
+        onCheckSubscription={checkSubscription}
+        isChecking={checkingChannel}
+      />
+    );
   }
 
   // Основной интерфейс приложения
@@ -140,8 +158,15 @@ export const HomePage: React.FC = () => {
         </div>
 
         <div className="grid gap-6 max-w-2xl mx-auto">
-          <HoroscopeCard />
-          <FortuneCard />
+          <HoroscopeCard 
+            zodiacSign="aries"
+            content="Добро пожаловать! Выберите знак зодиака для получения персонального гороскопа."
+            date={new Date().toISOString()}
+          />
+          <FortuneCard 
+            content="Нажмите на карту, чтобы получить предсказание судьбы от древних друидов."
+            date={new Date().toISOString()}
+          />
         </div>
       </div>
     </div>
