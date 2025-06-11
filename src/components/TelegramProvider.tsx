@@ -21,6 +21,7 @@ interface TelegramContextType {
     selection: () => void;
   };
   logout: () => Promise<void>;
+  authenticateUser: (user: TelegramUser) => Promise<boolean>;
 }
 
 const TelegramContext = createContext<TelegramContextType | null>(null);
@@ -63,6 +64,7 @@ export const TelegramProvider: React.FC<{ children: ReactNode }> = ({ children }
     isAuthenticated: !!authenticatedUser,
     authError,
     logout,
+    authenticateUser,
   };
 
   return (
