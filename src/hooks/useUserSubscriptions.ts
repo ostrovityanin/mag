@@ -7,7 +7,7 @@ import { useState } from 'react';
 export const useUserSubscriptions = () => {
   const { authenticatedUser, isAuthenticated } = useTelegramContext();
   const queryClient = useQueryClient();
-  const [checkingChannel, setCheckingChannel] = useState<string | null>(null);
+  const [isChecking, setIsChecking] = useState<string | null>(null);
 
   const subscriptionQuery = useQuery({
     queryKey: ['user-subscriptions', authenticatedUser?.id],
@@ -85,13 +85,24 @@ export const useUserSubscriptions = () => {
   });
 
   const checkSubscription = async (channelId: string, username: string) => {
-    if (!authenticatedUser) return;
+    if (!authenticatedUser) {
+      console.error('Пользователь не аутентифицирован для проверки подписки');
+      return;
+    }
     
-    setCheckingChannel(channelId);
+    console.log('=== НАЧАЛО ПРОВЕРКИ ОТДЕЛЬНОГО КАНАЛА ===');
+    console.log('Channel ID:', channelId);
+    console.log('Username:', username);
+    console.log('Authenticated user:', authenticatedUser);
+    
+    setIsChecking(channelId);
+    
     try {
-      console.log('=== ПРОВЕРКА ОТДЕЛЬНОГО КАНАЛА ===');
-      console.log('Channel ID:', channelId);
-      console.log('Username:', username);
+      console.log('Вызов edge function с параметрами:', {
+        userId: authenticatedUser.telegram_id.toString(),
+        channelId: channelId,
+        username: authenticatedUser.username || '',
+      });
       
       const { data, error } = await supabase.functions.invoke('check-telegram-subscription', {
         body: {
@@ -100,6 +111,8 @@ export const useUserSubscriptions = () => {
           username: authenticatedUser.username || '',
         },
       });
+
+      console.log('Ответ от edge function:', { data, error });
 
       if (error) {
         console.error('Ошибка проверки канала:', error);
@@ -111,10 +124,13 @@ export const useUserSubscriptions = () => {
       await queryClient.invalidateQueries({
         queryKey: ['user-subscriptions', authenticatedUser.id]
       });
+      
+      console.log('Кэш обновлен');
     } catch (error) {
       console.error('Ошибка при проверке канала:', error);
     } finally {
-      setCheckingChannel(null);
+      setIsChecking(null);
+      console.log('=== КОНЕЦ ПРОВЕРКИ ОТДЕЛЬНОГО КАНАЛА ===');
     }
   };
 
@@ -129,7 +145,7 @@ export const useUserSubscriptions = () => {
   return {
     ...subscriptionQuery,
     subscriptions,
-    checkingChannel,
+    isChecking,
     checkSubscription,
   };
 };

@@ -21,6 +21,20 @@ export const ChannelRequirement: React.FC<ChannelRequirementProps> = ({
 }) => {
   const allSubscribed = channels.every(c => subscriptions[c.id]);
 
+  const handleCheckClick = (channel: Channel) => {
+    console.log('=== КЛИК ПО КНОПКЕ ПРОВЕРИТЬ ===');
+    console.log('Канал:', channel);
+    console.log('ID канала:', channel.id);
+    console.log('Username канала:', channel.username);
+    console.log('Функция onCheckSubscription:', typeof onCheckSubscription);
+    
+    if (typeof onCheckSubscription === 'function') {
+      onCheckSubscription(channel.id, channel.username);
+    } else {
+      console.error('onCheckSubscription не является функцией');
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="text-center">
@@ -79,10 +93,7 @@ export const ChannelRequirement: React.FC<ChannelRequirementProps> = ({
                     <Button
                       size="sm"
                       variant={isSubscribed ? "default" : "outline"}
-                      onClick={() => {
-                        console.log('Нажата кнопка проверки для канала:', channel.id, channel.username);
-                        onCheckSubscription(channel.id, channel.username);
-                      }}
+                      onClick={() => handleCheckClick(channel)}
                       disabled={isCheckingThis}
                     >
                       {isCheckingThis ? (
