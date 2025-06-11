@@ -4,23 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useTelegramContext } from '@/components/TelegramProvider';
 
 export const TelegramLoginButton: React.FC = () => {
-  const { user, authenticateUser } = useTelegramContext();
-
-  const handleTelegramLogin = () => {
-    // Для тестирования создаем фейкового пользователя
-    const fakeUser = {
-      id: 123456789,
-      first_name: 'Тестовый',
-      last_name: 'Пользователь',
-      username: 'testuser',
-      language_code: 'ru',
-      is_premium: false,
-      is_bot: false
-    };
-
-    console.log('Логин через Telegram с тестовыми данными:', fakeUser);
-    authenticateUser(fakeUser);
-  };
+  const { user } = useTelegramContext();
 
   if (user) {
     return null; // Не показываем кнопку если уже залогинен
@@ -28,15 +12,11 @@ export const TelegramLoginButton: React.FC = () => {
 
   return (
     <div className="text-center">
-      <Button 
-        onClick={handleTelegramLogin}
-        className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 text-lg"
-        size="lg"
-      >
-        📱 Войти через Telegram
-      </Button>
-      <p className="text-sm text-gray-500 mt-2">
-        Демо-режим: проверка подписок будет эмулирована
+      <p className="text-sm text-gray-600 mb-4">
+        Для использования приложения необходимо запустить его в Telegram
+      </p>
+      <p className="text-xs text-gray-500">
+        Данное приложение работает только в среде Telegram WebApp
       </p>
     </div>
   );

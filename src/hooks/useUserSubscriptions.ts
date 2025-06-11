@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTelegramContext } from '@/components/TelegramProvider';
@@ -7,9 +8,6 @@ export const useUserSubscriptions = () => {
   const { authenticatedUser, isAuthenticated } = useTelegramContext();
   const queryClient = useQueryClient();
   const [isChecking, setIsChecking] = useState<string | null>(null);
-
-  // Демо-режим для тестирования
-  const isDemoMode = authenticatedUser?.telegram_id === 123456789;
 
   const subscriptionQuery = useQuery({
     queryKey: ['user-subscriptions', authenticatedUser?.id],
@@ -22,16 +20,6 @@ export const useUserSubscriptions = () => {
       console.log('=== ПРОВЕРКА ПОДПИСОК ===');
       console.log('Аутентифицированный пользователь:', authenticatedUser);
       console.log('Telegram ID пользователя:', authenticatedUser.telegram_id);
-      console.log('Демо-режим:', isDemoMode);
-
-      // В демо-режиме возвращаем фейковые данные
-      if (isDemoMode) {
-        console.log('Демо-режим: возвращаем фейковые подписки');
-        return {
-          subscriptions: {},
-          hasUnsubscribedChannels: true
-        };
-      }
 
       try {
         // Получаем все каналы
@@ -100,7 +88,6 @@ export const useUserSubscriptions = () => {
     console.log('=== НАЧАЛО ФУНКЦИИ checkSubscription ===');
     console.log('Параметры:', { channelId, username });
     console.log('authenticatedUser:', authenticatedUser);
-    console.log('Демо-режим:', isDemoMode);
     
     if (!authenticatedUser) {
       console.error('Пользователь не аутентифицирован для проверки подписки');
@@ -110,32 +97,6 @@ export const useUserSubscriptions = () => {
     setIsChecking(channelId);
     
     try {
-      // В демо-режиме эмулируем успешную проверку
-      if (isDemoMode) {
-        console.log('ДЕМО: Эмулируем проверку подписки...');
-        
-        // Имитируем задержку API
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // Эмулируем успешную подписку
-        console.log('ДЕМО: Подписка подтверждена!');
-        
-        // Обновляем кэш с фейковыми данными
-        queryClient.setQueryData(['user-subscriptions', authenticatedUser.id], (oldData: any) => {
-          const newSubscriptions = { ...(oldData?.subscriptions || {}) };
-          newSubscriptions[channelId] = true;
-          
-          return {
-            subscriptions: newSubscriptions,
-            hasUnsubscribedChannels: Object.values(newSubscriptions).some(sub => !sub)
-          };
-        });
-        
-        console.log('ДЕМО: Кэш обновлен');
-        return;
-      }
-      
-      // Реальная проверка для production
       console.log('Вызов edge function с параметрами:', {
         userId: authenticatedUser.telegram_id.toString(),
         channelId: channelId,
@@ -184,7 +145,6 @@ export const useUserSubscriptions = () => {
   console.log('subscriptions:', subscriptions);
   console.log('isChecking:', isChecking);
   console.log('checkSubscription функция:', typeof checkSubscription);
-  console.log('Демо-режим:', isDemoMode);
 
   return {
     ...subscriptionQuery,
