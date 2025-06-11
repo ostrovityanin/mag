@@ -1,10 +1,8 @@
 
 import { useAdminLogs } from './useAdminLogs';
-import { useTelegramAuth } from './useTelegramAuth';
 
 export const useSecurityMonitor = () => {
   const { logSecurityEvent } = useAdminLogs();
-  const { currentUser } = useTelegramAuth();
 
   const checkForTestUser = (telegramId: number, username?: string) => {
     console.log('=== ПРОВЕРКА НА ТЕСТОВОГО ПОЛЬЗОВАТЕЛЯ ===');
@@ -61,7 +59,7 @@ export const useSecurityMonitor = () => {
     });
   };
 
-  const logUnauthorizedAccess = (attemptedAction: string) => {
+  const logUnauthorizedAccess = (attemptedAction: string, currentUserTelegramId?: number) => {
     console.log('=== НЕСАНКЦИОНИРОВАННЫЙ ДОСТУП ===');
     
     logSecurityEvent({
@@ -70,16 +68,16 @@ export const useSecurityMonitor = () => {
       description: `Попытка несанкционированного доступа к: ${attemptedAction}`,
       context: {
         attempted_action: attemptedAction,
-        current_user: currentUser?.telegram_id,
+        current_user: currentUserTelegramId,
         timestamp: new Date().toISOString(),
         page_url: window.location.href,
       },
-      telegram_user_id: currentUser?.telegram_id,
+      telegram_user_id: currentUserTelegramId,
       blocked_action: attemptedAction,
     });
   };
 
-  const logDataAccess = (dataType: string, recordCount: number) => {
+  const logDataAccess = (dataType: string, recordCount: number, currentUserTelegramId?: number) => {
     console.log('=== ДОСТУП К ДАННЫМ ===');
     
     logSecurityEvent({
@@ -89,10 +87,10 @@ export const useSecurityMonitor = () => {
       context: {
         data_type: dataType,
         record_count: recordCount,
-        accessed_by: currentUser?.telegram_id,
+        accessed_by: currentUserTelegramId,
         timestamp: new Date().toISOString(),
       },
-      telegram_user_id: currentUser?.telegram_id,
+      telegram_user_id: currentUserTelegramId,
     });
   };
 
