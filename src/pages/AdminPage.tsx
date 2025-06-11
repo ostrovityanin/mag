@@ -3,10 +3,11 @@ import React, { useState } from 'react';
 import { useChannels } from '@/hooks/useChannels';
 import { ChannelManagement } from '@/components/admin/ChannelManagement';
 import { SystemLogs } from '@/components/admin/SystemLogs';
+import { UserLoginHistory } from '@/components/admin/UserLoginHistory';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, Users, BarChart3, Shield, FileText } from 'lucide-react';
+import { Settings, Users, BarChart3, Shield, FileText, UserCheck } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 export const AdminPage: React.FC = () => {
@@ -78,10 +79,14 @@ export const AdminPage: React.FC = () => {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 bg-white">
+          <TabsList className="grid w-full grid-cols-4 bg-white">
             <TabsTrigger value="channels" className="flex items-center space-x-2">
               <Settings className="h-4 w-4" />
               <span>Управление каналами</span>
+            </TabsTrigger>
+            <TabsTrigger value="users" className="flex items-center space-x-2">
+              <UserCheck className="h-4 w-4" />
+              <span>Пользователи</span>
             </TabsTrigger>
             <TabsTrigger value="logs" className="flex items-center space-x-2">
               <FileText className="h-4 w-4" />
@@ -95,6 +100,10 @@ export const AdminPage: React.FC = () => {
 
           <TabsContent value="channels">
             <ChannelManagement />
+          </TabsContent>
+
+          <TabsContent value="users">
+            <UserLoginHistory />
           </TabsContent>
 
           <TabsContent value="logs">
