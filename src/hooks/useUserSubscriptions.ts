@@ -14,16 +14,19 @@ export const useUserSubscriptions = () => {
 
   const checkSubscriptionMutation = useMutation({
     mutationFn: async ({ channelId, username }: { channelId: string; username: string }) => {
-      // Проверяем, что пользователь авторизован через Telegram
+      // Строгая проверка наличия реального пользователя Telegram
       if (!user?.id) {
-        throw new Error('Пользователь не авторизован через Telegram WebApp');
+        throw new Error('Для проверки подписки необходимо запустить приложение в Telegram WebApp');
       }
       
-      console.log('=== ПРОВЕРКА ПОДПИСКИ РЕАЛЬНОГО ПОЛЬЗОВАТЕЛЯ ===');
-      console.log('Telegram пользователь:', user);
-      console.log('User ID:', user.id);
-      console.log('Тип user ID:', typeof user.id);
-      console.log('ID канала:', channelId);
+      console.log('=== НАЧАЛО ПРОВЕРКИ ПОДПИСКИ ===');
+      console.log('Реальный пользователь Telegram:', {
+        id: user.id,
+        username: user.username,
+        firstName: user.first_name,
+        lastName: user.last_name
+      });
+      console.log('ID канала для проверки:', channelId);
       console.log('Username канала:', username);
 
       const requestBody = {
@@ -32,14 +35,14 @@ export const useUserSubscriptions = () => {
         username: username
       };
 
-      console.log('Тело запроса:', JSON.stringify(requestBody, null, 2));
+      console.log('Отправляем запрос к Edge Function:', JSON.stringify(requestBody, null, 2));
 
-      // Call the Edge Function to check subscription
+      // Вызов Edge Function для проверки подписки
       const { data, error } = await supabase.functions.invoke('check-telegram-subscription', {
         body: requestBody
       });
 
-      console.log('Ответ Edge Function:', { data, error });
+      console.log('Ответ от Edge Function:', { data, error });
 
       if (error) {
         console.error('Ошибка вызова Edge Function:', error);
@@ -48,14 +51,17 @@ export const useUserSubscriptions = () => {
 
       if (!data?.success) {
         console.error('Проверка подписки не удалась:', data?.error);
-        console.error('Отладочная информация:', data?.debug);
+        if (data?.debug) {
+          console.error('Отладочная информация:', data.debug);
+        }
         throw new Error(data?.error || 'Ошибка при проверке подписки');
       }
 
-      // Log debug information if available
-      if (data.debug) {
-        console.log('Отладочная информация от Edge Function:', data.debug);
-      }
+      console.log('Проверка подписки успешна:', {
+        channelId,
+        isSubscribed: data.isSubscribed,
+        userId: user.id
+      });
 
       return { 
         channelId, 
@@ -64,7 +70,9 @@ export const useUserSubscriptions = () => {
       };
     },
     onSuccess: ({ channelId, isSubscribed, debug }) => {
-      console.log('Проверка подписки успешна:', { channelId, isSubscribed });
+      console.log('=== РЕЗУЛЬТАТ ПРОВЕРКИ ПОДПИСКИ ===');
+      console.log('Канал:', channelId);
+      console.log('Подписан:', isSubscribed);
       
       if (debug) {
         console.log('Дополнительная отладочная информация:', debug);
@@ -91,37 +99,43 @@ export const useUserSubscriptions = () => {
       }
     },
     onError: (error) => {
-      console.error('Ошибка в проверке подписки:', error);
+      console.error('=== ОШИБКА ПРОВЕРКИ ПОДПИСКИ ===');
+      console.error('Детали ошибки:', error);
       setCheckingChannel(null);
       
-      // Show detailed error to help with debugging
       toast({
-        title: "Ошибка проверки",
-        description: `${error.message}. Проверьте консоль для деталей.`,
+        title: "Ошибка проверки подписки",
+        description: error.message,
         variant: "destructive",
       });
     }
   });
 
   const checkSubscription = useCallback((channelId: string, username: string) => {
+    // Проверяем наличие реального пользователя
     if (!user?.id) {
+      console.error('Попытка проверки подписки без пользователя Telegram');
       toast({
         title: "Ошибка авторизации",
-        description: "Пользователь не авторизован через Telegram WebApp",
+        description: "Запустите приложение в Telegram для проверки подписок",
         variant: "destructive",
       });
       return;
     }
     
-    console.log('Инициирую проверку подписки для:', { channelId, username, userId: user.id });
+    console.log('=== ИНИЦИАЦИЯ ПРОВЕРКИ ПОДПИСКИ ===');
+    console.log('Пользователь:', { id: user.id, username: user.username });
+    console.log('Канал:', { id: channelId, username });
+    
     setCheckingChannel(channelId);
     checkSubscriptionMutation.mutate({ channelId, username });
-  }, [checkSubscriptionMutation, user?.id, toast]);
+  }, [checkSubscriptionMutation, user, toast]);
 
   return {
     subscriptions,
     checkingChannel,
     checkSubscription,
-    isChecking: checkSubscriptionMutation.isPending
+    isChecking: checkSubscriptionMutation.isPending,
+    hasUser: !!user?.id
   };
 };

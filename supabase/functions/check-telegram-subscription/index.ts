@@ -39,40 +39,50 @@ serve(async (req) => {
     const { userId, channelId, username } = await req.json()
     
     console.log('=== ПРОВЕРКА ПОДПИСКИ РЕАЛЬНОГО ПОЛЬЗОВАТЕЛЯ ===')
-    console.log('userId:', userId, 'type:', typeof userId)
-    console.log('channelId:', channelId, 'type:', typeof channelId)
-    console.log('username:', username, 'type:', typeof username)
+    console.log('Получены параметры:')
+    console.log('- userId:', userId, '(тип:', typeof userId, ')')
+    console.log('- channelId:', channelId, '(тип:', typeof channelId, ')')
+    console.log('- username:', username, '(тип:', typeof username, ')')
     
-    await logToDatabase(supabase, 'info', 'Начало проверки подписки', {
+    await logToDatabase(supabase, 'info', 'Начало проверки подписки реального пользователя', {
       userId,
       channelId,
       username,
-      userIdType: typeof userId
+      userIdType: typeof userId,
+      receivedAt: new Date().toISOString()
     }, 'check-telegram-subscription', userId)
     
+    // Валидация входных параметров
     if (!userId || !channelId || !username) {
       const errorMsg = 'Отсутствуют обязательные параметры: userId, channelId, username'
+      console.error('Ошибка валидации:', errorMsg)
       await logToDatabase(supabase, 'error', errorMsg, {
-        providedParams: { userId: !!userId, channelId: !!channelId, username: !!username }
+        providedParams: { 
+          hasUserId: !!userId, 
+          hasChannelId: !!channelId, 
+          hasUsername: !!username 
+        }
       }, 'check-telegram-subscription', userId)
       throw new Error(errorMsg)
     }
 
-    // Get bot token from secrets
+    // Проверка токена бота
     const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN')
-    console.log('Bot token доступен:', !!botToken)
+    console.log('Статус токена бота:', botToken ? 'найден' : 'отсутствует')
     
     if (!botToken) {
       const errorMsg = 'TELEGRAM_BOT_TOKEN не настроен в секретах Supabase'
+      console.error('Критическая ошибка:', errorMsg)
       await logToDatabase(supabase, 'error', errorMsg, null, 'check-telegram-subscription', userId)
       throw new Error(errorMsg)
     }
 
-    await logToDatabase(supabase, 'info', 'Получение информации о канале из базы данных', {
+    console.log('=== ПОЛУЧЕНИЕ ДАННЫХ КАНАЛА ===')
+    await logToDatabase(supabase, 'info', 'Поиск канала в базе данных', {
       channelId
     }, 'check-telegram-subscription', userId)
 
-    // Get channel information from database
+    // Получение информации о канале из базы данных
     const { data: channel, error: channelError } = await supabase
       .from('required_channels')
       .select('chat_id, username, channel_type, name')
@@ -80,50 +90,58 @@ serve(async (req) => {
       .single()
 
     if (channelError) {
-      console.error('Ошибка получения канала:', channelError)
-      await logToDatabase(supabase, 'error', 'Ошибка получения канала из базы данных', {
+      console.error('Ошибка получения канала из БД:', channelError)
+      await logToDatabase(supabase, 'error', 'Канал не найден в базе данных', {
         channelId,
         error: channelError
       }, 'check-telegram-subscription', userId)
-      throw new Error('Канал не найден в базе данных')
+      throw new Error(`Канал с ID ${channelId} не найден в базе данных`)
     }
 
-    console.log('Канал из базы данных:', channel)
+    console.log('Данные канала из БД:', channel)
     await logToDatabase(supabase, 'info', 'Канал найден в базе данных', {
-      channel
+      channel,
+      foundChatId: !!channel.chat_id,
+      foundUsername: !!channel.username
     }, 'check-telegram-subscription', userId)
 
-    // Prepare channel identifier for Telegram API
+    // Подготовка идентификатора канала для Telegram API
     const channelIdentifier = channel.chat_id || `@${channel.username}`
     
-    console.log(`=== ВЫЗОВ TELEGRAM API ===`)
-    console.log(`User ID: ${userId}`)
-    console.log(`Идентификатор канала: ${channelIdentifier}`)
-    console.log(`Тип канала: ${channel.channel_type}`)
+    console.log('=== ВЫЗОВ TELEGRAM API ===')
+    console.log('Параметры запроса:')
+    console.log('- Пользователь ID:', userId)
+    console.log('- Идентификатор канала:', channelIdentifier)
+    console.log('- Тип канала:', channel.channel_type)
+    console.log('- Используется chat_id:', !!channel.chat_id)
     
-    await logToDatabase(supabase, 'info', 'Вызов Telegram API', {
+    await logToDatabase(supabase, 'info', 'Подготовка к вызову Telegram API', {
       userId,
       channelIdentifier,
       channelType: channel.channel_type,
-      usesChatId: !!channel.chat_id
+      usesChatId: !!channel.chat_id,
+      channelName: channel.name
     }, 'check-telegram-subscription', userId)
     
-    // Call Telegram API to check subscription
+    // Формирование URL для Telegram API
     const telegramApiUrl = `https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${encodeURIComponent(channelIdentifier)}&user_id=${userId}`
-    console.log('Вызов Telegram API:', telegramApiUrl.replace(botToken, 'HIDDEN_TOKEN'))
+    console.log('URL запроса к Telegram API:', telegramApiUrl.replace(botToken, '[СКРЫТ]'))
     
+    // Вызов Telegram API
     const telegramResponse = await fetch(telegramApiUrl)
     const telegramApiResponse = await telegramResponse.json()
     
-    console.log('Статус ответа Telegram API:', telegramResponse.status)
-    console.log('Полный ответ Telegram API:', JSON.stringify(telegramApiResponse, null, 2))
+    console.log('=== ОТВЕТ TELEGRAM API ===')
+    console.log('HTTP статус:', telegramResponse.status)
+    console.log('Ответ API:', JSON.stringify(telegramApiResponse, null, 2))
 
-    await logToDatabase(supabase, 'info', 'Ответ от Telegram API', {
+    await logToDatabase(supabase, 'info', 'Получен ответ от Telegram API', {
       httpStatus: telegramResponse.status,
       responseOk: telegramApiResponse.ok,
       errorCode: telegramApiResponse.error_code,
       description: telegramApiResponse.description,
-      result: telegramApiResponse.result
+      hasResult: !!telegramApiResponse.result,
+      memberStatus: telegramApiResponse.result?.status
     }, 'check-telegram-subscription', userId)
     
     let isSubscribed = false
@@ -131,37 +149,43 @@ serve(async (req) => {
     if (telegramApiResponse.ok && telegramApiResponse.result) {
       const memberStatus = telegramApiResponse.result.status
       isSubscribed = ['member', 'administrator', 'creator'].includes(memberStatus)
-      console.log(`Пользователь ${userId} статус в канале: ${memberStatus}, подписан: ${isSubscribed}`)
+      console.log(`=== РЕЗУЛЬТАТ ПРОВЕРКИ ===`)
+      console.log(`Статус пользователя ${userId} в канале:`, memberStatus)
+      console.log(`Подписан:`, isSubscribed)
       
       await logToDatabase(supabase, 'info', 'Статус пользователя в канале определен', {
         memberStatus,
         isSubscribed,
-        result: telegramApiResponse.result
+        userInfo: telegramApiResponse.result
       }, 'check-telegram-subscription', userId)
     } else {
-      console.error('Ошибка Telegram API:', {
-        error_code: telegramApiResponse.error_code,
-        description: telegramApiResponse.description
-      })
+      console.error('=== ОШИБКА TELEGRAM API ===')
+      console.error('Код ошибки:', telegramApiResponse.error_code)
+      console.error('Описание:', telegramApiResponse.description)
 
-      await logToDatabase(supabase, 'error', 'Ошибка Telegram API', {
+      await logToDatabase(supabase, 'error', 'Ошибка ответа от Telegram API', {
         error_code: telegramApiResponse.error_code,
         description: telegramApiResponse.description,
         channelIdentifier,
-        userId
+        userId,
+        fullResponse: telegramApiResponse
       }, 'check-telegram-subscription', userId)
       
-      // Если API вернул ошибку, проверяем код ошибки
-      if (telegramApiResponse.error_code === 400 && telegramApiResponse.description?.includes('user not found')) {
-        throw new Error('Пользователь не найден в Telegram или не взаимодействовал с ботом')
-      } else if (telegramApiResponse.error_code === 400 && telegramApiResponse.description?.includes('chat not found')) {
-        throw new Error('Канал не найден. Проверьте правильность chat_id или username канала')
-      } else {
-        throw new Error(`Ошибка Telegram API: ${telegramApiResponse.description || 'Неизвестная ошибка'}`)
+      // Обработка специфических ошибок Telegram API
+      if (telegramApiResponse.error_code === 400) {
+        if (telegramApiResponse.description?.includes('user not found')) {
+          throw new Error(`Пользователь с ID ${userId} не найден в Telegram или не взаимодействовал с ботом`)
+        } else if (telegramApiResponse.description?.includes('chat not found')) {
+          throw new Error(`Канал ${channelIdentifier} не найден или бот не добавлен в канал`)
+        } else if (telegramApiResponse.description?.includes('USER_ID_INVALID')) {
+          throw new Error(`Некорректный ID пользователя: ${userId}`)
+        }
       }
+      
+      throw new Error(`Ошибка Telegram API (${telegramApiResponse.error_code}): ${telegramApiResponse.description || 'Неизвестная ошибка'}`)
     }
 
-    // Save subscription status to database
+    // Сохранение результата в базу данных
     const subscriptionData = {
       user_id: userId.toString(),
       channel_id: channelId,
@@ -169,8 +193,10 @@ serve(async (req) => {
       checked_at: new Date().toISOString()
     }
     
-    console.log('Сохранение данных подписки:', subscriptionData)
-    await logToDatabase(supabase, 'info', 'Сохранение статуса подписки в базу данных', {
+    console.log('=== СОХРАНЕНИЕ РЕЗУЛЬТАТА ===')
+    console.log('Данные для сохранения:', subscriptionData)
+    
+    await logToDatabase(supabase, 'info', 'Сохранение результата проверки подписки', {
       subscriptionData
     }, 'check-telegram-subscription', userId)
     
@@ -181,12 +207,12 @@ serve(async (req) => {
       })
 
     if (upsertError) {
-      console.error('Ошибка сохранения статуса подписки:', upsertError)
+      console.error('Ошибка сохранения в БД:', upsertError)
       await logToDatabase(supabase, 'error', 'Ошибка сохранения статуса подписки', {
         error: upsertError,
         subscriptionData
       }, 'check-telegram-subscription', userId)
-      throw new Error('Не удалось сохранить статус подписки')
+      throw new Error('Не удалось сохранить статус подписки в базу данных')
     }
 
     const result = { 
@@ -196,9 +222,15 @@ serve(async (req) => {
       userId,
       debug: {
         channelInfo: channel,
-        telegramApiResponse: telegramApiResponse,
+        telegramApiResponse: {
+          ok: telegramApiResponse.ok,
+          error_code: telegramApiResponse.error_code,
+          description: telegramApiResponse.description,
+          result: telegramApiResponse.result
+        },
         subscriptionSaved: true,
-        usedChannelIdentifier: channelIdentifier
+        usedChannelIdentifier: channelIdentifier,
+        timestamp: new Date().toISOString()
       }
     }
     
@@ -206,12 +238,18 @@ serve(async (req) => {
       result: {
         isSubscribed,
         channelId,
-        userId
+        userId,
+        channelName: channel.name
       }
     }, 'check-telegram-subscription', userId)
 
-    console.log('=== КОНЕЦ ПРОВЕРКИ ПОДПИСКИ ===')
-    console.log('Итоговый результат:', result)
+    console.log('=== УСПЕШНОЕ ЗАВЕРШЕНИЕ ===')
+    console.log('Финальный результат:', {
+      success: true,
+      isSubscribed,
+      channelId,
+      userId
+    })
 
     return new Response(
       JSON.stringify(result),
@@ -224,17 +262,16 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('=== ОШИБКА В ПРОВЕРКЕ ПОДПИСКИ ===')
-    console.error('Детали ошибки:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
-    })
+    console.error('=== КРИТИЧЕСКАЯ ОШИБКА ===')
+    console.error('Тип ошибки:', error.name)
+    console.error('Сообщение ошибки:', error.message)
+    console.error('Стек ошибки:', error.stack)
 
-    await logToDatabase(supabase, 'error', 'Критическая ошибка в проверке подписки', {
+    await logToDatabase(supabase, 'error', 'Критическая ошибка в функции проверки подписки', {
       errorName: error.name,
       errorMessage: error.message,
-      errorStack: error.stack
+      errorStack: error.stack,
+      timestamp: new Date().toISOString()
     }, 'check-telegram-subscription')
     
     return new Response(
@@ -243,7 +280,7 @@ serve(async (req) => {
         error: error.message,
         debug: {
           errorType: error.name,
-          errorStack: error.stack
+          timestamp: new Date().toISOString()
         }
       }),
       { 

@@ -23,30 +23,26 @@ const TelegramContext = createContext<TelegramContextType | null>(null);
 export const TelegramProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const telegramData = useTelegram();
 
-  // Добавим детальное логирование данных пользователя
+  // Детальное логирование только реальных данных пользователя
   React.useEffect(() => {
+    console.log('=== TELEGRAM WEBAPP СОСТОЯНИЕ ===');
+    console.log('WebApp доступен:', !!telegramData.webApp);
+    console.log('Загрузка:', telegramData.isLoading);
+    
     if (telegramData.user) {
-      console.log('=== TELEGRAM USER DATA ===');
-      console.log('Full user object:', JSON.stringify(telegramData.user, null, 2));
-      console.log('User ID:', telegramData.user.id);
-      console.log('User ID type:', typeof telegramData.user.id);
+      console.log('=== РЕАЛЬНЫЙ ПОЛЬЗОВАТЕЛЬ TELEGRAM ===');
+      console.log('Полный объект пользователя:', JSON.stringify(telegramData.user, null, 2));
+      console.log('ID пользователя:', telegramData.user.id);
+      console.log('Тип ID пользователя:', typeof telegramData.user.id);
       console.log('Username:', telegramData.user.username);
-      console.log('First name:', telegramData.user.first_name);
-      console.log('=== END USER DATA ===');
+      console.log('Имя:', telegramData.user.first_name);
+      console.log('Фамилия:', telegramData.user.last_name);
     } else if (!telegramData.isLoading) {
-      console.log('=== NO TELEGRAM USER FOUND ===');
-      console.log('WebApp available:', !!telegramData.webApp);
-      console.log('Is loading:', telegramData.isLoading);
-      
-      // Создадим тестового пользователя для разработки
-      const testUser: TelegramUser = {
-        id: 123456789,
-        first_name: 'Test',
-        last_name: 'User',
-        username: 'testuser'
-      };
-      console.log('Using test user for development:', testUser);
+      console.log('=== ПОЛЬЗОВАТЕЛЬ TELEGRAM НЕ НАЙДЕН ===');
+      console.log('WebApp инициализирован:', !!telegramData.webApp);
+      console.log('Причина: Приложение запущено вне Telegram WebApp или пользователь не авторизован');
     }
+    console.log('=== КОНЕЦ ДАННЫХ ПОЛЬЗОВАТЕЛЯ ===');
   }, [telegramData.user, telegramData.isLoading, telegramData.webApp]);
 
   return (
