@@ -112,6 +112,36 @@ export type Database = {
         }
         Relationships: []
       }
+      system_logs: {
+        Row: {
+          context: Json | null
+          created_at: string
+          function_name: string | null
+          id: string
+          level: string
+          message: string
+          user_id: string | null
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          function_name?: string | null
+          id?: string
+          level?: string
+          message: string
+          user_id?: string | null
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          function_name?: string | null
+          id?: string
+          level?: string
+          message?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_subscriptions: {
         Row: {
           channel_id: string
