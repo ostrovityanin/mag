@@ -16,11 +16,12 @@ serve(async (req) => {
   try {
     const { userId, channelId, username } = await req.json()
     
+    console.log('=== SUBSCRIPTION CHECK START ===')
+    console.log('Request params:', { userId, channelId, username })
+    
     if (!userId || !channelId || !username) {
       throw new Error('Missing required parameters: userId, channelId, username')
     }
-
-    console.log(`Checking subscription for user ${userId} to channel @${username}`)
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -29,6 +30,8 @@ serve(async (req) => {
 
     // Get bot token from secrets
     const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN')
+    console.log('Bot token exists:', !!botToken)
+    
     if (!botToken) {
       throw new Error('TELEGRAM_BOT_TOKEN is not configured')
     }
@@ -36,7 +39,7 @@ serve(async (req) => {
     // Get channel information from database
     const { data: channel, error: channelError } = await supabase
       .from('required_channels')
-      .select('chat_id, username, channel_type')
+      .select('chat_id, username, channel_type, name')
       .eq('id', channelId)
       .single()
 
@@ -45,10 +48,11 @@ serve(async (req) => {
       throw new Error('Channel not found')
     }
 
-    console.log('Channel info:', channel)
+    console.log('Channel from database:', channel)
 
     // Check subscription using Telegram Bot API
     let isSubscribed = false
+    let telegramApiResponse = null
     
     try {
       // Determine channel identifier (use chat_id if available, otherwise username)
@@ -56,38 +60,63 @@ serve(async (req) => {
       
       console.log(`Checking membership for user ${userId} in channel ${channelIdentifier}`)
       
-      const telegramResponse = await fetch(
-        `https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${channelIdentifier}&user_id=${userId}`
-      )
+      const telegramApiUrl = `https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${encodeURIComponent(channelIdentifier)}&user_id=${userId}`
+      console.log('Telegram API URL (without token):', telegramApiUrl.replace(botToken, 'HIDDEN_TOKEN'))
       
-      const telegramData = await telegramResponse.json()
-      console.log('Telegram API response:', telegramData)
+      const telegramResponse = await fetch(telegramApiUrl)
+      telegramApiResponse = await telegramResponse.json()
       
-      if (telegramData.ok) {
-        const memberStatus = telegramData.result.status
+      console.log('Telegram API response status:', telegramResponse.status)
+      console.log('Telegram API full response:', JSON.stringify(telegramApiResponse, null, 2))
+      
+      if (telegramApiResponse.ok) {
+        const memberStatus = telegramApiResponse.result.status
         // User is subscribed if they are member, administrator, or creator
         isSubscribed = ['member', 'administrator', 'creator'].includes(memberStatus)
         console.log(`User ${userId} status in channel: ${memberStatus}, subscribed: ${isSubscribed}`)
       } else {
-        console.error('Telegram API error:', telegramData)
-        // If there's an error (like user not found), assume not subscribed
+        console.error('Telegram API error details:', {
+          error_code: telegramApiResponse.error_code,
+          description: telegramApiResponse.description,
+          parameters: telegramApiResponse.parameters
+        })
+        
+        // Special handling for common errors
+        if (telegramApiResponse.error_code === 400) {
+          if (telegramApiResponse.description?.includes('user not found')) {
+            console.log('User not found in chat - treating as not subscribed')
+          } else if (telegramApiResponse.description?.includes('chat not found')) {
+            console.error('Chat not found - check channel identifier')
+          }
+        }
+        
+        // If there's an error, assume not subscribed
         isSubscribed = false
       }
     } catch (telegramError) {
-      console.error('Error checking Telegram subscription:', telegramError)
+      console.error('Error making request to Telegram API:', telegramError)
+      console.error('Error details:', {
+        name: telegramError.name,
+        message: telegramError.message,
+        stack: telegramError.stack
+      })
       // On error, assume not subscribed for security
       isSubscribed = false
     }
 
     // Save subscription status to database
+    const subscriptionData = {
+      user_id: userId.toString(),
+      channel_id: channelId,
+      is_subscribed: isSubscribed,
+      checked_at: new Date().toISOString()
+    }
+    
+    console.log('Saving subscription data:', subscriptionData)
+    
     const { error: upsertError } = await supabase
       .from('user_subscriptions')
-      .upsert({
-        user_id: userId.toString(),
-        channel_id: channelId,
-        is_subscribed: isSubscribed,
-        checked_at: new Date().toISOString()
-      }, {
+      .upsert(subscriptionData, {
         onConflict: 'user_id,channel_id'
       })
 
@@ -96,15 +125,23 @@ serve(async (req) => {
       throw new Error('Failed to save subscription status')
     }
 
-    console.log(`Subscription check completed: user ${userId}, channel ${channelId}, subscribed: ${isSubscribed}`)
+    const result = { 
+      success: true, 
+      isSubscribed,
+      channelId,
+      userId,
+      debug: {
+        channelInfo: channel,
+        telegramApiResponse: telegramApiResponse,
+        subscriptionSaved: true
+      }
+    }
+    
+    console.log('=== SUBSCRIPTION CHECK END ===')
+    console.log('Final result:', result)
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        isSubscribed,
-        channelId,
-        userId 
-      }),
+      JSON.stringify(result),
       { 
         headers: { 
           ...corsHeaders, 
@@ -114,12 +151,21 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error in check-telegram-subscription function:', error)
+    console.error('=== ERROR IN SUBSCRIPTION CHECK ===')
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    })
     
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message 
+        error: error.message,
+        debug: {
+          errorType: error.name,
+          errorStack: error.stack
+        }
       }),
       { 
         status: 400,
