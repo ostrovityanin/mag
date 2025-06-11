@@ -28,6 +28,8 @@ export const UserLoginHistory: React.FC = () => {
   const { data: users = [], isLoading, refetch } = useQuery({
     queryKey: ['telegram-users', sortBy],
     queryFn: async (): Promise<TelegramUser[]> => {
+      console.log('=== ЗАГРУЗКА РЕАЛЬНЫХ ПОЛЬЗОВАТЕЛЕЙ ===');
+      
       const { data, error } = await supabase
         .from('telegram_users')
         .select('*')
@@ -35,11 +37,22 @@ export const UserLoginHistory: React.FC = () => {
         .limit(200);
       
       if (error) {
-        console.error('Error fetching users:', error);
+        console.error('Ошибка получения пользователей:', error);
         throw error;
       }
       
-      return data || [];
+      // Фильтруем только реальных пользователей (проверяем, что telegram_id > 0 и не является тестовым)
+      const realUsers = (data || []).filter(user => 
+        user.telegram_id && 
+        user.telegram_id > 0 && 
+        user.telegram_id !== 123456789 && // исключаем тестовый ID
+        typeof user.telegram_id === 'number'
+      );
+      
+      console.log('Найдено реальных пользователей:', realUsers.length);
+      console.log('Пользователи:', realUsers);
+      
+      return realUsers;
     },
   });
 
@@ -195,7 +208,7 @@ export const UserLoginHistory: React.FC = () => {
               {users.length === 0 && !isLoading && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-gray-500 py-8">
-                    Пользователи не найдены
+                    Реальные пользователи не найдены
                   </TableCell>
                 </TableRow>
               )}
