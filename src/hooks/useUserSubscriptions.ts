@@ -85,6 +85,10 @@ export const useUserSubscriptions = () => {
   });
 
   const checkSubscription = async (channelId: string, username: string) => {
+    console.log('=== НАЧАЛО ФУНКЦИИ checkSubscription ===');
+    console.log('Параметры:', { channelId, username });
+    console.log('authenticatedUser:', authenticatedUser);
+    
     if (!authenticatedUser) {
       console.error('Пользователь не аутентифицирован для проверки подписки');
       return;
@@ -141,6 +145,11 @@ export const useUserSubscriptions = () => {
       subscriptions[channelId] = subscriptionQuery.data.subscriptions[channelId];
     });
   }
+
+  console.log('=== useUserSubscriptions РЕЗУЛЬТАТ ===');
+  console.log('subscriptions:', subscriptions);
+  console.log('isChecking:', isChecking);
+  console.log('checkSubscription функция:', typeof checkSubscription);
 
   return {
     ...subscriptionQuery,

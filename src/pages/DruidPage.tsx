@@ -33,6 +33,13 @@ export const DruidPage: React.FC = () => {
     isLoading: subscriptionsLoading 
   } = useUserSubscriptions();
 
+  console.log('=== DRUID PAGE STATE ===');
+  console.log('channels:', channels);
+  console.log('subscriptions:', subscriptions);
+  console.log('isChecking:', isChecking);
+  console.log('checkSubscription тип:', typeof checkSubscription);
+  console.log('checkSubscription существует:', !!checkSubscription);
+
   const requiredChannels = channels.filter(c => c.required);
   const allChannelsSubscribed = requiredChannels.length > 0 && requiredChannels.every(c => subscriptions[c.id]);
 

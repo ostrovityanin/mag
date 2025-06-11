@@ -27,13 +27,36 @@ export const ChannelRequirement: React.FC<ChannelRequirementProps> = ({
     console.log('ID канала:', channel.id);
     console.log('Username канала:', channel.username);
     console.log('Функция onCheckSubscription:', typeof onCheckSubscription);
+    console.log('onCheckSubscription существует:', !!onCheckSubscription);
     
-    if (typeof onCheckSubscription === 'function') {
+    // Добавляем проверку на существование функции
+    if (!onCheckSubscription) {
+      console.error('onCheckSubscription функция не передана!');
+      return;
+    }
+    
+    if (typeof onCheckSubscription !== 'function') {
+      console.error('onCheckSubscription не является функцией, тип:', typeof onCheckSubscription);
+      return;
+    }
+    
+    try {
+      console.log('Вызываем onCheckSubscription с параметрами:', {
+        channelId: channel.id,
+        username: channel.username
+      });
       onCheckSubscription(channel.id, channel.username);
-    } else {
-      console.error('onCheckSubscription не является функцией');
+      console.log('onCheckSubscription вызвана успешно');
+    } catch (error) {
+      console.error('Ошибка при вызове onCheckSubscription:', error);
     }
   };
+
+  console.log('=== RENDER CHANNEL REQUIREMENT ===');
+  console.log('Каналы:', channels);
+  console.log('Подписки:', subscriptions);
+  console.log('isChecking:', isChecking);
+  console.log('onCheckSubscription тип:', typeof onCheckSubscription);
 
   return (
     <div className="space-y-4">
@@ -50,6 +73,8 @@ export const ChannelRequirement: React.FC<ChannelRequirementProps> = ({
         {channels.map((channel) => {
           const isSubscribed = subscriptions[channel.id];
           const isCheckingThis = isChecking === channel.id;
+          
+          console.log(`Канал ${channel.id}: isSubscribed=${isSubscribed}, isCheckingThis=${isCheckingThis}`);
           
           return (
             <Card key={channel.id} className="p-4">
@@ -93,8 +118,14 @@ export const ChannelRequirement: React.FC<ChannelRequirementProps> = ({
                     <Button
                       size="sm"
                       variant={isSubscribed ? "default" : "outline"}
-                      onClick={() => handleCheckClick(channel)}
+                      onClick={(e) => {
+                        console.log('Button clicked, event:', e);
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleCheckClick(channel);
+                      }}
                       disabled={isCheckingThis}
+                      type="button"
                     >
                       {isCheckingThis ? (
                         <>
