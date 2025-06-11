@@ -16,62 +16,59 @@ export const useUserSubscriptions = () => {
     mutationFn: async ({ channelId, username }: { channelId: string; username: string }) => {
       // Используем тестового пользователя, если реального нет
       const userId = user?.id || 123456789;
+      const isTestUser = !user || userId === 123456789;
       
-      console.log('=== SUBSCRIPTION CHECK DEBUG ===');
-      console.log('Original user object:', user);
-      console.log('Using user ID:', userId);
-      console.log('User ID type:', typeof userId);
-      console.log('Channel ID:', channelId);
-      console.log('Channel username:', username);
+      console.log('=== ОТЛАДКА ПРОВЕРКИ ПОДПИСКИ ===');
+      console.log('Оригинальный объект пользователя:', user);
+      console.log('Используемый user ID:', userId);
+      console.log('Тип user ID:', typeof userId);
+      console.log('Тестовый режим:', isTestUser);
+      console.log('ID канала:', channelId);
+      console.log('Username канала:', username);
 
-      if (!userId) {
-        throw new Error('Пользователь не найден');
-      }
-
-      console.log(`Starting subscription check for user ${userId} to channel @${username}`);
-
-      // Call the Edge Function to check subscription
       const requestBody = {
         userId: userId.toString(),
         channelId: channelId,
         username: username
       };
 
-      console.log('Request body being sent:', JSON.stringify(requestBody, null, 2));
+      console.log('Тело запроса:', JSON.stringify(requestBody, null, 2));
 
+      // Call the Edge Function to check subscription
       const { data, error } = await supabase.functions.invoke('check-telegram-subscription', {
         body: requestBody
       });
 
-      console.log('Edge function response:', { data, error });
+      console.log('Ответ Edge Function:', { data, error });
 
       if (error) {
-        console.error('Error calling subscription check function:', error);
+        console.error('Ошибка вызова Edge Function:', error);
         throw new Error(`Ошибка при проверке подписки: ${error.message}`);
       }
 
       if (!data?.success) {
-        console.error('Subscription check failed:', data?.error);
-        console.error('Debug info:', data?.debug);
+        console.error('Проверка подписки не удалась:', data?.error);
+        console.error('Отладочная информация:', data?.debug);
         throw new Error(data?.error || 'Ошибка при проверке подписки');
       }
 
       // Log debug information if available
       if (data.debug) {
-        console.log('Debug info from Edge Function:', data.debug);
+        console.log('Отладочная информация от Edge Function:', data.debug);
       }
 
       return { 
         channelId, 
         isSubscribed: data.isSubscribed,
+        isTestMode: data.isTestMode,
         debug: data.debug
       };
     },
-    onSuccess: ({ channelId, isSubscribed, debug }) => {
-      console.log('Subscription check successful:', { channelId, isSubscribed });
+    onSuccess: ({ channelId, isSubscribed, isTestMode, debug }) => {
+      console.log('Проверка подписки успешна:', { channelId, isSubscribed, isTestMode });
       
       if (debug) {
-        console.log('Additional debug info:', debug);
+        console.log('Дополнительная отладочная информация:', debug);
       }
       
       setSubscriptions(prev => ({
@@ -84,18 +81,22 @@ export const useUserSubscriptions = () => {
       if (isSubscribed) {
         toast({
           title: "Подписка подтверждена!",
-          description: "Спасибо за подписку на канал.",
+          description: isTestMode 
+            ? "Тестовый режим: подписка эмулирована для разработки." 
+            : "Спасибо за подписку на канал.",
         });
       } else {
         toast({
           title: "Подписка не найдена",
-          description: "Пожалуйста, подпишитесь на канал и попробуйте снова.",
+          description: isTestMode 
+            ? "Тестовый режим: для демонстрации подписка не найдена." 
+            : "Пожалуйста, подпишитесь на канал и попробуйте снова.",
           variant: "destructive",
         });
       }
     },
     onError: (error) => {
-      console.error('Error in subscription check:', error);
+      console.error('Ошибка в проверке подписки:', error);
       setCheckingChannel(null);
       
       // Show detailed error to help with debugging
@@ -108,7 +109,7 @@ export const useUserSubscriptions = () => {
   });
 
   const checkSubscription = useCallback((channelId: string, username: string) => {
-    console.log('Initiating subscription check for:', { channelId, username });
+    console.log('Инициирую проверку подписки для:', { channelId, username });
     setCheckingChannel(channelId);
     checkSubscriptionMutation.mutate({ channelId, username });
   }, [checkSubscriptionMutation]);
