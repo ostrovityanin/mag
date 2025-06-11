@@ -1,29 +1,43 @@
-
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Users, User, Crown } from 'lucide-react';
-import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { 
+  User, 
+  Users, 
+  Clock, 
+  Shield, 
+  Crown, 
+  Settings,
+  RefreshCw,
+  Calendar,
+  Hash
+} from 'lucide-react';
 
 interface TelegramUser {
   id: string;
   telegram_id: number;
-  username: string | null;
-  first_name: string | null;
-  last_name: string | null;
-  is_premium: boolean;
-  last_login: string;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  language_code?: string;
+  is_premium?: boolean;
+  is_bot?: boolean;
+  photo_url?: string;
+  last_login?: string;
   created_at: string;
+  updated_at: string;
 }
 
+type SortBy = 'recent' | 'username' | 'created_at';
+
 export const UserLoginHistory: React.FC = () => {
-  const [sortBy, setSortBy] = useState<'last_login' | 'created_at'>('last_login');
+  const [sortBy, setSortBy] = useState<SortBy>('recent');
 
   const { data: users = [], isLoading, refetch } = useQuery({
     queryKey: ['telegram-users', sortBy],
@@ -33,7 +47,7 @@ export const UserLoginHistory: React.FC = () => {
       const { data, error } = await supabase
         .from('telegram_users')
         .select('*')
-        .order(sortBy, { ascending: false })
+        .order(sortBy === 'recent' ? 'last_login' : sortBy, { ascending: false })
         .limit(200);
       
       if (error) {
@@ -41,181 +55,286 @@ export const UserLoginHistory: React.FC = () => {
         throw error;
       }
       
-      // Фильтруем только реальных пользователей (проверяем, что telegram_id > 0 и не является тестовым)
-      const realUsers = (data || []).filter(user => 
-        user.telegram_id && 
-        user.telegram_id > 0 && 
-        user.telegram_id !== 123456789 && // исключаем тестовый ID
-        typeof user.telegram_id === 'number'
-      );
+      // Фильтруем только реальных пользователей Telegram
+      const realUsers = (data || []).filter(user => {
+        const isValidTelegramId = user.telegram_id && 
+                                  user.telegram_id > 0 && 
+                                  typeof user.telegram_id === 'number';
+        
+        const isNotTestUser = user.telegram_id !== 123456789 && 
+                              user.telegram_id !== 999999999;
+        
+        const hasValidData = user.first_name || user.username;
+        
+        console.log(`Проверка пользователя ${user.telegram_id}:`, {
+          isValidTelegramId,
+          isNotTestUser, 
+          hasValidData,
+          include: isValidTelegramId && isNotTestUser && hasValidData
+        });
+        
+        return isValidTelegramId && isNotTestUser && hasValidData;
+      });
       
-      console.log('Найдено реальных пользователей:', realUsers.length);
-      console.log('Пользователи:', realUsers);
+      console.log('Общее количество записей в БД:', data?.length);
+      console.log('Отфильтровано реальных пользователей:', realUsers.length);
+      console.log('Реальные пользователи:', realUsers);
       
       return realUsers;
     },
   });
 
-  const formatUserName = (user: TelegramUser) => {
-    const parts = [user.first_name, user.last_name].filter(Boolean);
-    return parts.length > 0 ? parts.join(' ') : 'Без имени';
+  const stats = {
+    total: users.length,
+    premium: users.filter(u => u.is_premium).length,
+    recent: users.filter(u => {
+      if (!u.last_login) return false;
+      const lastLogin = new Date(u.last_login);
+      const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      return lastLogin > dayAgo;
+    }).length,
+    withUsername: users.filter(u => u.username).length,
+  };
+
+  const handleRefresh = () => {
+    console.log('Обновление списка пользователей...');
+    refetch();
+  };
+
+  const handleSort = (newSortBy: SortBy) => {
+    setSortBy(newSortBy);
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Никогда';
+    return new Date(dateString).toLocaleString('ru-RU');
   };
 
   const formatTelegramId = (telegramId: number) => {
-    return telegramId.toString();
+    return telegramId.toLocaleString('ru-RU');
   };
 
-  const getDaysAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) return 'сегодня';
-    if (diffDays === 2) return 'вчера';
-    if (diffDays <= 7) return `${diffDays} дня назад`;
-    if (diffDays <= 30) return `${Math.floor(diffDays / 7)} недель назад`;
-    return `${Math.floor(diffDays / 30)} месяцев назад`;
+  const getUserDisplayName = (user: TelegramUser) => {
+    if (user.first_name && user.last_name) {
+      return `${user.first_name} ${user.last_name}`;
+    }
+    if (user.first_name) {
+      return user.first_name;
+    }
+    if (user.username) {
+      return `@${user.username}`;
+    }
+    return `ID: ${user.telegram_id}`;
   };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Users className="h-5 w-5" />
+            <span>История входов пользователей</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <LoadingSpinner className="mx-auto" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Users className="h-5 w-5" />
-            <span>История логинов пользователей</span>
-            <Badge variant="secondary">{users.length}</Badge>
+    <div className="space-y-6">
+      {/* Статистика */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Всего пользователей</p>
+                <p className="text-2xl font-bold">{stats.total}</p>
+              </div>
+              <Users className="h-8 w-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Premium</p>
+                <p className="text-2xl font-bold">{stats.premium}</p>
+              </div>
+              <Crown className="h-8 w-8 text-yellow-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">За сутки</p>
+                <p className="text-2xl font-bold">{stats.recent}</p>
+              </div>
+              <Clock className="h-8 w-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">С username</p>
+                <p className="text-2xl font-bold">{stats.withUsername}</p>
+              </div>
+              <User className="h-8 w-8 text-purple-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Основная таблица */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center space-x-2">
+                <Users className="h-5 w-5" />
+                <span>Реальные пользователи Telegram</span>
+              </CardTitle>
+              <CardDescription>
+                Отображаются только подтвержденные пользователи из Telegram
+              </CardDescription>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1">
+                <Button
+                  variant={sortBy === 'recent' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleSort('recent')}
+                >
+                  <Clock className="h-4 w-4 mr-1" />
+                  По входу
+                </Button>
+                <Button
+                  variant={sortBy === 'username' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleSort('username')}
+                >
+                  <User className="h-4 w-4 mr-1" />
+                  По имени
+                </Button>
+                <Button
+                  variant={sortBy === 'created_at' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleSort('created_at')}
+                >
+                  <Calendar className="h-4 w-4 mr-1" />
+                  По дате
+                </Button>
+              </div>
+              <Separator orientation="vertical" className="h-6" />
+              <Button variant="outline" size="sm" onClick={handleRefresh}>
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Обновить
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <select 
-              value={sortBy} 
-              onChange={(e) => setSortBy(e.target.value as 'last_login' | 'created_at')}
-              className="px-3 py-1 border rounded text-sm"
-            >
-              <option value="last_login">По последнему входу</option>
-              <option value="created_at">По регистрации</option>
-            </select>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              disabled={isLoading}
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              Обновить
-            </Button>
-          </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[600px]">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[120px]">Telegram ID</TableHead>
-                <TableHead className="w-[150px]">Username</TableHead>
-                <TableHead className="w-[200px]">Имя</TableHead>
-                <TableHead className="w-[120px]">Статус</TableHead>
-                <TableHead className="w-[150px]">Последний вход</TableHead>
-                <TableHead className="w-[150px]">Регистрация</TableHead>
-                <TableHead className="w-[100px]">Активность</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <code className="bg-blue-100 px-2 py-1 rounded text-xs font-mono">
-                      {formatTelegramId(user.telegram_id)}
-                    </code>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-1">
-                      <User className="h-3 w-3 text-gray-400" />
-                      <span className="text-sm">
-                        {user.username ? `@${user.username}` : 'Не указан'}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm">{formatUserName(user)}</span>
-                      {user.is_premium && (
-                        <div className="relative group">
-                          <Crown className="h-3 w-3 text-yellow-500" />
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                            Telegram Premium
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-1">
-                      {user.is_premium && (
-                        <Badge variant="secondary" className="text-xs">
-                          Premium
-                        </Badge>
-                      )}
-                      <Badge variant="outline" className="text-xs">
-                        Активен
-                      </Badge>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    <div>
-                      <div className="font-medium">
-                        {format(new Date(user.last_login), 'dd.MM.yyyy HH:mm', { locale: ru })}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {getDaysAgo(user.last_login)}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    <div>
-                      <div className="font-medium">
-                        {format(new Date(user.created_at), 'dd.MM.yyyy HH:mm', { locale: ru })}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {getDaysAgo(user.created_at)}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center">
-                      <div 
-                        className={`w-2 h-2 rounded-full ${
-                          getDaysAgo(user.last_login).includes('сегодня') || getDaysAgo(user.last_login).includes('вчера')
-                            ? 'bg-green-500' 
-                            : getDaysAgo(user.last_login).includes('дня назад')
-                            ? 'bg-yellow-500'
-                            : 'bg-gray-300'
-                        }`}
-                        title={
-                          getDaysAgo(user.last_login).includes('сегодня') || getDaysAgo(user.last_login).includes('вчера')
-                            ? 'Активен'
-                            : getDaysAgo(user.last_login).includes('дня назад')
-                            ? 'Недавно'
-                            : 'Давно не заходил'
-                        }
-                      />
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {users.length === 0 && !isLoading && (
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-gray-500 py-8">
-                    Реальные пользователи не найдены
-                  </TableCell>
+                  <TableHead>Пользователь</TableHead>
+                  <TableHead>Telegram ID</TableHead>
+                  <TableHead>Username</TableHead>
+                  <TableHead>Язык</TableHead>
+                  <TableHead>Статус</TableHead>
+                  <TableHead>Последний вход</TableHead>
+                  <TableHead>Регистрация</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+              </TableHeader>
+              <TableBody>
+                {users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white text-sm font-medium">
+                          {getUserDisplayName(user).charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-medium">{getUserDisplayName(user)}</p>
+                          {user.is_bot && (
+                            <Badge variant="secondary" className="text-xs">
+                              <Settings className="h-3 w-3 mr-1" />
+                              Бот
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-1">
+                        <Hash className="h-3 w-3 text-muted-foreground" />
+                        <span className="font-mono text-sm">{formatTelegramId(user.telegram_id)}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {user.username ? (
+                        <span className="text-blue-600">@{user.username}</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {user.language_code?.toUpperCase() || 'RU'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-1">
+                        {user.is_premium && (
+                          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                            <Crown className="h-3 w-3 mr-1" />
+                            Premium
+                          </Badge>
+                        )}
+                        {!user.is_premium && (
+                          <Badge variant="outline">
+                            Обычный
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">{formatDate(user.last_login)}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground">{formatDate(user.created_at)}</span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            
+            {users.length === 0 && (
+              <div className="text-center py-8">
+                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">
+                  Реальные пользователи Telegram не найдены
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Пользователи появятся здесь после входа через Telegram WebApp
+                </p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };

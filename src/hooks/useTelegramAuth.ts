@@ -24,6 +24,18 @@ export const useTelegramAuth = () => {
     try {
       console.log('=== СОЗДАНИЕ/ОБНОВЛЕНИЕ ПОЛЬЗОВАТЕЛЯ ===');
       console.log('Данные Telegram пользователя:', telegramUser);
+      
+      // Проверяем, что это реальный пользователь Telegram
+      if (!telegramUser.id || telegramUser.id <= 0) {
+        console.error('Недопустимый telegram_id:', telegramUser.id);
+        throw new Error('Недопустимый ID пользователя Telegram');
+      }
+      
+      // Дополнительная проверка на тестовые ID
+      if (telegramUser.id === 123456789 || telegramUser.id === 999999999) {
+        console.error('Попытка использования тестового telegram_id:', telegramUser.id);
+        throw new Error('Тестовые пользователи запрещены');
+      }
 
       // Проверяем, существует ли пользователь
       const { data: existingUser, error: fetchError } = await supabase
@@ -49,6 +61,8 @@ export const useTelegramAuth = () => {
         last_login: new Date().toISOString(),
       };
 
+      console.log('Подготовленные данные пользователя:', userData);
+
       if (existingUser) {
         // Обновляем существующего пользователя
         console.log('Обновляем существующего пользователя:', existingUser.id);
@@ -72,7 +86,7 @@ export const useTelegramAuth = () => {
         return updatedUser;
       } else {
         // Создаем нового пользователя
-        console.log('Создаем нового пользователя');
+        console.log('Создаем нового пользователя с telegram_id:', telegramUser.id);
         
         const { data: newUser, error: createError } = await supabase
           .from('telegram_users')
@@ -175,6 +189,7 @@ export const useTelegramAuth = () => {
       setError(null);
 
       console.log('=== НАЧАЛО АУТЕНТИФИКАЦИИ ===');
+      console.log('Входящие данные пользователя Telegram:', telegramUser);
       
       // Создаем или обновляем пользователя
       const userData = await createOrUpdateUser(telegramUser);
@@ -227,10 +242,16 @@ export const useTelegramAuth = () => {
     const checkExistingSession = async () => {
       const sessionToken = localStorage.getItem('telegram_session_token');
       if (sessionToken) {
+        console.log('Найден токен сессии, проверяем валидность:', sessionToken);
         const userData = await validateSession(sessionToken);
         if (userData) {
+          console.log('Сессия валидна, пользователь восстановлен:', userData);
           setCurrentUser(userData);
+        } else {
+          console.log('Сессия недействительна, требуется повторная аутентификация');
         }
+      } else {
+        console.log('Токен сессии не найден');
       }
       setIsLoading(false);
     };
