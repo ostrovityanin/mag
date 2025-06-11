@@ -9,6 +9,60 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_logs: {
+        Row: {
+          created_at: string
+          details: Json
+          error_message: string | null
+          execution_time_ms: number | null
+          filtered_count: number | null
+          id: string
+          ip_address: string | null
+          log_type: string
+          operation: string
+          request_url: string | null
+          session_info: Json | null
+          success: boolean | null
+          telegram_user_id: number | null
+          user_agent: string | null
+          user_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          details?: Json
+          error_message?: string | null
+          execution_time_ms?: number | null
+          filtered_count?: number | null
+          id?: string
+          ip_address?: string | null
+          log_type: string
+          operation: string
+          request_url?: string | null
+          session_info?: Json | null
+          success?: boolean | null
+          telegram_user_id?: number | null
+          user_agent?: string | null
+          user_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          details?: Json
+          error_message?: string | null
+          execution_time_ms?: number | null
+          filtered_count?: number | null
+          id?: string
+          ip_address?: string | null
+          log_type?: string
+          operation?: string
+          request_url?: string | null
+          session_info?: Json | null
+          success?: boolean | null
+          telegram_user_id?: number | null
+          user_agent?: string | null
+          user_count?: number | null
+        }
+        Relationships: []
+      }
       fortune_requests: {
         Row: {
           created_at: string
@@ -109,6 +163,39 @@ export type Database = {
           name?: string
           required?: boolean
           username?: string
+        }
+        Relationships: []
+      }
+      security_events: {
+        Row: {
+          blocked_action: string | null
+          context: Json | null
+          created_at: string
+          description: string
+          event_type: string
+          id: string
+          severity: string
+          telegram_user_id: number | null
+        }
+        Insert: {
+          blocked_action?: string | null
+          context?: Json | null
+          created_at?: string
+          description: string
+          event_type: string
+          id?: string
+          severity?: string
+          telegram_user_id?: number | null
+        }
+        Update: {
+          blocked_action?: string | null
+          context?: Json | null
+          created_at?: string
+          description?: string
+          event_type?: string
+          id?: string
+          severity?: string
+          telegram_user_id?: number | null
         }
         Relationships: []
       }
@@ -295,7 +382,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_old_logs: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

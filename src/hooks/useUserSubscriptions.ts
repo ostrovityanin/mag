@@ -2,11 +2,13 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTelegramContext } from '@/components/TelegramProvider';
+import { useAdminLogs } from '@/hooks/useAdminLogs';
 import { useState } from 'react';
 
 export const useUserSubscriptions = () => {
   const { authenticatedUser, isAuthenticated } = useTelegramContext();
   const queryClient = useQueryClient();
+  const { logAdminAction } = useAdminLogs();
   const [isChecking, setIsChecking] = useState<string | null>(null);
 
   const subscriptionQuery = useQuery({
@@ -17,6 +19,7 @@ export const useUserSubscriptions = () => {
         throw new Error('Пользователь не аутентифицирован');
       }
 
+      const startTime = Date.now();
       console.log('=== ПРОВЕРКА ПОДПИСОК ===');
       console.log('Аутентифицированный пользователь:', authenticatedUser);
       console.log('Telegram ID пользователя:', authenticatedUser.telegram_id);
@@ -35,6 +38,20 @@ export const useUserSubscriptions = () => {
 
         if (!channels || channels.length === 0) {
           console.log('Нет обязательных каналов для проверки');
+          
+          logAdminAction({
+            log_type: 'data_query',
+            operation: 'check_user_subscriptions',
+            details: { 
+              channels_found: 0,
+              user_id: authenticatedUser.telegram_id,
+            },
+            user_count: 0,
+            telegram_user_id: authenticatedUser.telegram_id,
+            execution_time_ms: Date.now() - startTime,
+            success: true,
+          });
+          
           return {
             subscriptions: {},
             hasUnsubscribedChannels: false
@@ -73,9 +90,42 @@ export const useUserSubscriptions = () => {
         }
 
         console.log('Результат проверки подписок:', { subscriptions, hasUnsubscribedChannels });
+        
+        // Логируем проверку подписок
+        logAdminAction({
+          log_type: 'data_query',
+          operation: 'check_user_subscriptions',
+          details: { 
+            channels_checked: channels.length,
+            subscriptions_result: subscriptions,
+            has_unsubscribed: hasUnsubscribedChannels,
+            user_id: authenticatedUser.telegram_id,
+          },
+          user_count: channels.length,
+          filtered_count: Object.values(subscriptions).filter(Boolean).length,
+          telegram_user_id: authenticatedUser.telegram_id,
+          execution_time_ms: Date.now() - startTime,
+          success: true,
+        });
+        
         return { subscriptions, hasUnsubscribedChannels };
       } catch (error) {
         console.error('Ошибка при проверке подписок:', error);
+        
+        // Логируем ошибку
+        logAdminAction({
+          log_type: 'data_query',
+          operation: 'check_user_subscriptions_failed',
+          details: { 
+            error_message: error instanceof Error ? error.message : 'Unknown error',
+            user_id: authenticatedUser.telegram_id,
+          },
+          telegram_user_id: authenticatedUser.telegram_id,
+          execution_time_ms: Date.now() - startTime,
+          success: false,
+          error_message: error instanceof Error ? error.message : 'Unknown error',
+        });
+        
         throw error;
       }
     },
@@ -95,6 +145,7 @@ export const useUserSubscriptions = () => {
     }
     
     setIsChecking(channelId);
+    const startTime = Date.now();
     
     try {
       console.log('Вызов edge function с параметрами:', {
@@ -113,6 +164,22 @@ export const useUserSubscriptions = () => {
 
       console.log('Ответ от edge function:', { data, error });
 
+      // Логируем проверку отдельного канала
+      logAdminAction({
+        log_type: 'data_query',
+        operation: 'check_single_subscription',
+        details: {
+          channel_id: channelId,
+          user_id: authenticatedUser.telegram_id,
+          subscription_result: data?.isSubscribed || false,
+          has_error: !!error,
+        },
+        telegram_user_id: authenticatedUser.telegram_id,
+        execution_time_ms: Date.now() - startTime,
+        success: !error,
+        error_message: error ? JSON.stringify(error) : undefined,
+      });
+
       if (error) {
         console.error('Ошибка проверки канала:', error);
       } else {
@@ -127,6 +194,21 @@ export const useUserSubscriptions = () => {
       console.log('Кэш обновлен');
     } catch (error) {
       console.error('Ошибка при проверке канала:', error);
+      
+      // Логируем ошибку проверки
+      logAdminAction({
+        log_type: 'data_query',
+        operation: 'check_single_subscription_failed',
+        details: {
+          channel_id: channelId,
+          user_id: authenticatedUser.telegram_id,
+          error_message: error instanceof Error ? error.message : 'Unknown error',
+        },
+        telegram_user_id: authenticatedUser.telegram_id,
+        execution_time_ms: Date.now() - startTime,
+        success: false,
+        error_message: error instanceof Error ? error.message : 'Unknown error',
+      });
     } finally {
       setIsChecking(null);
       console.log('=== КОНЕЦ ПРОВЕРКИ ОТДЕЛЬНОГО КАНАЛА ===');

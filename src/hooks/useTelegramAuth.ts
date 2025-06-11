@@ -1,7 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { TelegramUser } from '@/types/telegram';
+import { useAdminLogs } from '@/hooks/useAdminLogs';
+import { useSecurityMonitor } from '@/hooks/useSecurityMonitor';
 
 interface TelegramUserData {
   id: string;
@@ -19,23 +20,47 @@ export const useTelegramAuth = () => {
   const [currentUser, setCurrentUser] = useState<TelegramUserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const { logAdminAction } = useAdminLogs();
+  const { checkForTestUser, logSuspiciousAuth } = useSecurityMonitor();
 
   const createOrUpdateUser = async (telegramUser: TelegramUser): Promise<TelegramUserData | null> => {
+    const startTime = Date.now();
+    
     try {
       console.log('=== СОЗДАНИЕ/ОБНОВЛЕНИЕ ПОЛЬЗОВАТЕЛЯ ===');
       console.log('Данные Telegram пользователя:', telegramUser);
       
       // Проверяем, что это реальный пользователь Telegram
       if (!telegramUser.id || telegramUser.id <= 0) {
+        const errorMsg = 'Недопустимый ID пользователя Telegram';
         console.error('Недопустимый telegram_id:', telegramUser.id);
-        throw new Error('Недопустимый ID пользователя Telegram');
+        
+        logSuspiciousAuth(telegramUser.id, errorMsg);
+        throw new Error(errorMsg);
       }
       
-      // Дополнительная проверка на тестовые ID
-      if (telegramUser.id === 123456789 || telegramUser.id === 999999999) {
-        console.error('Попытка использования тестового telegram_id:', telegramUser.id);
-        throw new Error('Тестовые пользователи запрещены');
+      // Проверяем на тестовых пользователей
+      const securityCheck = checkForTestUser(telegramUser.id, telegramUser.username);
+      if (securityCheck.isTestUser) {
+        const errorMsg = `Тестовые пользователи запрещены (${securityCheck.reason})`;
+        console.error('Попытка использования тестового пользователя:', telegramUser.id);
+        throw new Error(errorMsg);
       }
+
+      // Логируем попытку аутентификации
+      logAdminAction({
+        log_type: 'auth_attempt',
+        operation: 'user_authentication',
+        details: {
+          telegram_id: telegramUser.id,
+          username: telegramUser.username,
+          has_premium: telegramUser.is_premium,
+          language: telegramUser.language_code,
+        },
+        telegram_user_id: telegramUser.id,
+        success: true,
+      });
 
       // Проверяем, существует ли пользователь
       const { data: existingUser, error: fetchError } = await supabase
@@ -83,6 +108,17 @@ export const useTelegramAuth = () => {
         }
 
         console.log('Пользователь обновлен:', updatedUser);
+        
+        // Логируем успешное обновление
+        logAdminAction({
+          log_type: 'user_load',
+          operation: 'update_existing_user',
+          details: { user_id: updatedUser.id, telegram_id: telegramUser.id },
+          telegram_user_id: telegramUser.id,
+          execution_time_ms: Date.now() - startTime,
+          success: true,
+        });
+        
         return updatedUser;
       } else {
         // Создаем нового пользователя
@@ -100,10 +136,33 @@ export const useTelegramAuth = () => {
         }
 
         console.log('Новый пользователь создан:', newUser);
+        
+        // Логируем создание нового пользователя
+        logAdminAction({
+          log_type: 'user_load',
+          operation: 'create_new_user',
+          details: { user_id: newUser.id, telegram_id: telegramUser.id },
+          telegram_user_id: telegramUser.id,
+          execution_time_ms: Date.now() - startTime,
+          success: true,
+        });
+        
         return newUser;
       }
     } catch (err) {
       console.error('Ошибка в createOrUpdateUser:', err);
+      
+      // Логируем ошибку аутентификации
+      logAdminAction({
+        log_type: 'auth_attempt',
+        operation: 'user_authentication_failed',
+        details: { telegram_id: telegramUser.id, error: err instanceof Error ? err.message : 'Unknown error' },
+        telegram_user_id: telegramUser.id,
+        execution_time_ms: Date.now() - startTime,
+        success: false,
+        error_message: err instanceof Error ? err.message : 'Ошибка аутентификации',
+      });
+      
       setError(err instanceof Error ? err.message : 'Ошибка аутентификации');
       return null;
     }
@@ -114,16 +173,14 @@ export const useTelegramAuth = () => {
       console.log('=== СОЗДАНИЕ СЕССИИ ===');
       console.log('ID пользователя:', userId);
 
-      // Удаляем старые сессии пользователя
       await supabase
         .from('telegram_sessions')
         .delete()
         .eq('user_id', userId);
 
-      // Создаем новую сессию
       const sessionToken = `tg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 30); // Сессия действительна 30 дней
+      expiresAt.setDate(expiresAt.getDate() + 30);
 
       const { data: session, error: sessionError } = await supabase
         .from('telegram_sessions')
@@ -141,8 +198,6 @@ export const useTelegramAuth = () => {
       }
 
       console.log('Сессия создана:', session);
-      
-      // Сохраняем токен сессии в localStorage
       localStorage.setItem('telegram_session_token', sessionToken);
       
       return sessionToken;
@@ -191,14 +246,12 @@ export const useTelegramAuth = () => {
       console.log('=== НАЧАЛО АУТЕНТИФИКАЦИИ ===');
       console.log('Входящие данные пользователя Telegram:', telegramUser);
       
-      // Создаем или обновляем пользователя
       const userData = await createOrUpdateUser(telegramUser);
       if (!userData) {
         setError('Не удалось создать пользователя');
         return false;
       }
 
-      // Создаем сессию
       const sessionToken = await createSession(userData.id);
       if (!sessionToken) {
         setError('Не удалось создать сессию');
@@ -223,7 +276,6 @@ export const useTelegramAuth = () => {
     try {
       const sessionToken = localStorage.getItem('telegram_session_token');
       if (sessionToken) {
-        // Удаляем сессию из базы данных
         await supabase
           .from('telegram_sessions')
           .delete()

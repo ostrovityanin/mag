@@ -1,18 +1,53 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useChannels } from '@/hooks/useChannels';
+import { useAdminLogs } from '@/hooks/useAdminLogs';
 import { ChannelManagement } from '@/components/admin/ChannelManagement';
 import { SystemLogs } from '@/components/admin/SystemLogs';
 import { UserLoginHistory } from '@/components/admin/UserLoginHistory';
+import { LogsViewer } from '@/components/admin/LogsViewer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, Users, BarChart3, Shield, FileText, UserCheck } from 'lucide-react';
+import { Settings, Users, BarChart3, Shield, FileText, UserCheck, Activity } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 export const AdminPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('channels');
   const { data: channels = [], isLoading: channelsLoading } = useChannels();
+  const { logAdminAction } = useAdminLogs();
+
+  // Логируем загрузку админ-панели
+  useEffect(() => {
+    const startTime = Date.now();
+    
+    logAdminAction({
+      log_type: 'user_load',
+      operation: 'load_admin_panel',
+      details: {
+        page: 'admin',
+        timestamp: new Date().toISOString(),
+      },
+      execution_time_ms: Date.now() - startTime,
+      success: true,
+    });
+  }, [logAdminAction]);
+
+  // Логируем переключение вкладок
+  const handleTabChange = (tabValue: string) => {
+    logAdminAction({
+      log_type: 'filter_action',
+      operation: 'switch_admin_tab',
+      details: {
+        from_tab: activeTab,
+        to_tab: tabValue,
+        timestamp: new Date().toISOString(),
+      },
+      success: true,
+    });
+    
+    setActiveTab(tabValue);
+  };
 
   if (channelsLoading) {
     return (
@@ -32,7 +67,7 @@ export const AdminPage: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-900">Админ-панель</h1>
           </div>
           <p className="text-gray-600">
-            Управление каналами и настройками приложения
+            Управление каналами и мониторинг системы
           </p>
         </div>
 
@@ -78,11 +113,11 @@ export const AdminPage: React.FC = () => {
         </div>
 
         {/* Main Content */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-white">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5 bg-white">
             <TabsTrigger value="channels" className="flex items-center space-x-2">
               <Settings className="h-4 w-4" />
-              <span>Управление каналами</span>
+              <span>Каналы</span>
             </TabsTrigger>
             <TabsTrigger value="users" className="flex items-center space-x-2">
               <UserCheck className="h-4 w-4" />
@@ -90,7 +125,11 @@ export const AdminPage: React.FC = () => {
             </TabsTrigger>
             <TabsTrigger value="logs" className="flex items-center space-x-2">
               <FileText className="h-4 w-4" />
-              <span>Системные логи</span>
+              <span>Старые логи</span>
+            </TabsTrigger>
+            <TabsTrigger value="monitoring" className="flex items-center space-x-2">
+              <Activity className="h-4 w-4" />
+              <span>Мониторинг</span>
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center space-x-2">
               <Shield className="h-4 w-4" />
@@ -108,6 +147,10 @@ export const AdminPage: React.FC = () => {
 
           <TabsContent value="logs">
             <SystemLogs />
+          </TabsContent>
+
+          <TabsContent value="monitoring">
+            <LogsViewer />
           </TabsContent>
 
           <TabsContent value="settings">
