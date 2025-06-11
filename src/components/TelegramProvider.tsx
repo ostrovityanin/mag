@@ -1,12 +1,16 @@
 
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useEffect } from 'react';
 import { useTelegram } from '@/hooks/useTelegram';
+import { useTelegramAuth } from '@/hooks/useTelegramAuth';
 import { TelegramUser, TelegramWebApp } from '@/types/telegram';
 
 interface TelegramContextType {
   webApp: TelegramWebApp | null;
   user: TelegramUser | null;
+  authenticatedUser: any | null;
   isLoading: boolean;
+  isAuthenticated: boolean;
+  authError: string | null;
   showMainButton: (text: string, onClick: () => void) => void;
   hideMainButton: () => void;
   showBackButton: (onClick: () => void) => void;
@@ -16,39 +20,53 @@ interface TelegramContextType {
     notification: (type: 'error' | 'success' | 'warning') => void;
     selection: () => void;
   };
+  logout: () => Promise<void>;
 }
 
 const TelegramContext = createContext<TelegramContextType | null>(null);
 
 export const TelegramProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const telegramData = useTelegram();
+  const { 
+    currentUser: authenticatedUser, 
+    isLoading: authLoading, 
+    error: authError, 
+    authenticateUser, 
+    logout 
+  } = useTelegramAuth();
 
-  // Детальное логирование только реальных данных пользователя
-  React.useEffect(() => {
+  // Автоматически аутентифицируем пользователя, когда данные Telegram загружены
+  useEffect(() => {
+    if (!telegramData.isLoading && telegramData.user && !authLoading && !authenticatedUser) {
+      console.log('=== АВТОМАТИЧЕСКАЯ АУТЕНТИФИКАЦИЯ ===');
+      console.log('Telegram пользователь найден, начинаем аутентификацию:', telegramData.user);
+      
+      authenticateUser(telegramData.user);
+    }
+  }, [telegramData.user, telegramData.isLoading, authLoading, authenticatedUser, authenticateUser]);
+
+  // Логирование состояния
+  useEffect(() => {
     console.log('=== TELEGRAM PROVIDER СОСТОЯНИЕ ===');
     console.log('WebApp доступен:', !!telegramData.webApp);
-    console.log('Загрузка завершена:', !telegramData.isLoading);
-    
-    if (telegramData.user) {
-      console.log('=== ПОЛЬЗОВАТЕЛЬ НАЙДЕН В PROVIDER ===');
-      console.log('ID пользователя:', telegramData.user.id);
-      console.log('Тип ID пользователя:', typeof telegramData.user.id);
-      console.log('Username:', telegramData.user.username);
-      console.log('Имя:', telegramData.user.first_name);
-      console.log('Фамилия:', telegramData.user.last_name);
-    } else if (!telegramData.isLoading) {
-      console.log('=== ПОЛЬЗОВАТЕЛЬ НЕ НАЙДЕН В PROVIDER ===');
-      console.log('WebApp инициализирован:', !!telegramData.webApp);
-      if (telegramData.webApp) {
-        console.log('InitData присутствует:', !!telegramData.webApp.initData);
-        console.log('InitDataUnsafe присутствует:', !!telegramData.webApp.initDataUnsafe);
-      }
-    }
+    console.log('Telegram загрузка завершена:', !telegramData.isLoading);
+    console.log('Telegram пользователь:', telegramData.user);
+    console.log('Аутентифицированный пользователь:', authenticatedUser);
+    console.log('Загрузка аутентификации:', authLoading);
+    console.log('Ошибка аутентификации:', authError);
     console.log('=== КОНЕЦ PROVIDER ЛОГОВ ===');
-  }, [telegramData.user, telegramData.isLoading, telegramData.webApp]);
+  }, [telegramData, authenticatedUser, authLoading, authError]);
+
+  const contextValue: TelegramContextType = {
+    ...telegramData,
+    authenticatedUser,
+    isAuthenticated: !!authenticatedUser,
+    authError,
+    logout,
+  };
 
   return (
-    <TelegramContext.Provider value={telegramData}>
+    <TelegramContext.Provider value={contextValue}>
       {children}
     </TelegramContext.Provider>
   );

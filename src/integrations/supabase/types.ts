@@ -142,6 +142,83 @@ export type Database = {
         }
         Relationships: []
       }
+      telegram_sessions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          session_token: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          session_token: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          session_token?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "telegram_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telegram_users: {
+        Row: {
+          created_at: string
+          first_name: string | null
+          id: string
+          is_bot: boolean | null
+          is_premium: boolean | null
+          language_code: string | null
+          last_login: string | null
+          last_name: string | null
+          photo_url: string | null
+          telegram_id: number
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          is_bot?: boolean | null
+          is_premium?: boolean | null
+          language_code?: string | null
+          last_login?: string | null
+          last_name?: string | null
+          photo_url?: string | null
+          telegram_id: number
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          is_bot?: boolean | null
+          is_premium?: boolean | null
+          language_code?: string | null
+          last_login?: string | null
+          last_name?: string | null
+          photo_url?: string | null
+          telegram_id?: number
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
       user_subscriptions: {
         Row: {
           channel_id: string
