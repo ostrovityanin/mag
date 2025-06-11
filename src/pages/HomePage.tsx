@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { WelcomeScreen } from '@/components/WelcomeScreen';
 import { ChannelRequirement } from '@/components/ChannelRequirement';
@@ -11,6 +10,7 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertCircle, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import SimpleTelegramAuth from '@/components/SimpleTelegramAuth';
 
 export const HomePage: React.FC = () => {
   const { 
@@ -118,55 +118,23 @@ export const HomePage: React.FC = () => {
 
   // Основной интерфейс приложения
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
-      {/* Заголовок с информацией о пользователе */}
-      <div className="bg-black/20 backdrop-blur-sm border-b border-white/10">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <User className="h-6 w-6 text-white" />
-              <div className="text-white">
-                <p className="font-medium">
-                  {authenticatedUser?.first_name || authenticatedUser?.username || 'Пользователь'}
-                </p>
-                <p className="text-xs text-gray-300">
-                  @{authenticatedUser?.username || 'нет username'}
-                </p>
-              </div>
-            </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={logout}
-              className="text-white hover:bg-white/10"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Основной контент */}
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
       <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">
-            🔮 Друид Гороскопов
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            🔮 Астро Печенье
           </h1>
-          <p className="text-xl text-purple-200">
-            Ваш мистический путь к познанию судьбы
+          <p className="text-lg text-gray-600">
+            Персональные гороскопы и предсказания для вас
           </p>
         </div>
 
-        <div className="grid gap-6 max-w-2xl mx-auto">
-          <HoroscopeCard 
-            zodiacSign="aries"
-            content="Добро пожаловать! Выберите знак зодиака для получения персонального гороскопа."
-            date={new Date().toISOString()}
-          />
-          <FortuneCard 
-            content="Нажмите на карту, чтобы получить предсказание судьбы от древних друидов."
-            date={new Date().toISOString()}
-          />
+        <SimpleTelegramAuth />
+        
+        <div className="mt-12 text-center">
+          <p className="text-sm text-gray-500">
+            Powered by Telegram WebApp • Версия 2.0
+          </p>
         </div>
       </div>
     </div>

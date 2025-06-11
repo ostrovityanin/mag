@@ -1,0 +1,209 @@
+
+import React, { useEffect, useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { User, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { checkUserSubscription } from '@/utils/subscriptionApi';
+
+declare global {
+  interface Window {
+    Telegram?: any;
+  }
+}
+
+type TgUser = {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+};
+
+const SimpleTelegramAuth: React.FC = () => {
+  const [user, setUser] = useState<TgUser | null>(null);
+  const [subscribed, setSubscribed] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const CHANNEL_ID = '@luizahey'; // Канал для проверки подписки
+
+  const handleCheckSubscription = async (userId: number) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const isSubscribed = await checkUserSubscription(userId, CHANNEL_ID);
+      setSubscribed(isSubscribed);
+    } catch (err) {
+      console.error('Ошибка при проверке подписки:', err);
+      setError(err instanceof Error ? err.message : 'Ошибка проверки подписки');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    console.log('=== ИНИЦИАЛИЗАЦИЯ ПРОСТОЙ TELEGRAM AUTH ===');
+    
+    // Попытка получить данные пользователя из Telegram WebApp
+    if (window.Telegram?.WebApp) {
+      const tg = window.Telegram.WebApp;
+      console.log('Telegram WebApp найден:', tg);
+      
+      tg.ready();
+      tg.expand();
+      
+      const initUser: TgUser = tg.initDataUnsafe?.user;
+      console.log('Данные пользователя из Telegram:', initUser);
+      
+      if (initUser && initUser.id) {
+        setUser(initUser);
+        handleCheckSubscription(initUser.id);
+      } else {
+        console.warn('Пользователь не найден в Telegram WebApp');
+      }
+    } else {
+      console.warn('Telegram WebApp не доступен');
+      // Для разработки создаем тестового пользователя
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Режим разработки: создаем тестового пользователя');
+        const testUser: TgUser = {
+          id: Date.now(), // Используем текущее время как ID
+          first_name: 'Разработчик',
+          last_name: 'Тест',
+          username: 'developer',
+        };
+        setUser(testUser);
+        setSubscribed(true); // В режиме разработки считаем подписанным
+      }
+    }
+  }, []);
+
+  const handleLoginClick = () => {
+    console.log('Клик по кнопке входа');
+    alert('Для полной функциональности запустите приложение в Telegram WebApp');
+  };
+
+  const handleManualCheck = () => {
+    if (user) {
+      handleCheckSubscription(user.id);
+    }
+  };
+
+  const renderSubscriptionStatus = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center space-x-2 text-blue-600">
+          <LoadingSpinner className="h-4 w-4" />
+          <span>Проверка подписки...</span>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="flex items-center space-x-2 text-red-600">
+          <AlertCircle className="h-4 w-4" />
+          <span>Ошибка: {error}</span>
+        </div>
+      );
+    }
+
+    if (subscribed === null) {
+      return (
+        <div className="flex items-center space-x-2 text-gray-500">
+          <AlertCircle className="h-4 w-4" />
+          <span>Подписка не проверена</span>
+        </div>
+      );
+    }
+
+    return subscribed ? (
+      <div className="flex items-center space-x-2 text-green-600">
+        <CheckCircle className="h-4 w-4" />
+        <span>Вы подписаны на канал</span>
+      </div>
+    ) : (
+      <div className="flex items-center space-x-2 text-red-600">
+        <XCircle className="h-4 w-4" />
+        <span>Вы не подписаны на канал</span>
+      </div>
+    );
+  };
+
+  // Если пользователь не найден - показываем кнопку входа
+  if (!user) {
+    return (
+      <Card className="max-w-md mx-auto mt-8">
+        <CardHeader className="text-center">
+          <CardTitle className="flex items-center justify-center space-x-2">
+            <User className="h-5 w-5" />
+            <span>Вход в приложение</span>
+          </CardTitle>
+          <CardDescription>
+            Для использования приложения необходима авторизация через Telegram
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-center">
+          <Button onClick={handleLoginClick} className="w-full">
+            Войти через Telegram
+          </Button>
+          <p className="text-sm text-gray-500 mt-4">
+            Приложение работает в среде Telegram WebApp
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Показываем информацию о пользователе и статус подписки
+  return (
+    <Card className="max-w-md mx-auto mt-8">
+      <CardHeader>
+        <CardTitle className="flex items-center space-x-2">
+          <User className="h-5 w-5" />
+          <span>Профиль пользователя</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <h3 className="font-medium">
+            Привет, {user.first_name} {user.last_name || ''}
+          </h3>
+          {user.username && (
+            <p className="text-sm text-gray-600">@{user.username}</p>
+          )}
+          <Badge variant="outline" className="mt-2">
+            ID: {user.id}
+          </Badge>
+        </div>
+        
+        <div className="border-t pt-4">
+          <h4 className="font-medium mb-2">Статус подписки на канал:</h4>
+          {renderSubscriptionStatus()}
+          
+          <Button 
+            onClick={handleManualCheck} 
+            variant="outline" 
+            size="sm"
+            disabled={loading}
+            className="mt-3 w-full"
+          >
+            Проверить подписку заново
+          </Button>
+        </div>
+        
+        {!subscribed && subscribed !== null && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+            <p className="text-sm text-yellow-800">
+              Подпишитесь на канал {CHANNEL_ID} для полного доступа к приложению
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+export default SimpleTelegramAuth;
