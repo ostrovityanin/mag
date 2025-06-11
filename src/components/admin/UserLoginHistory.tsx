@@ -129,7 +129,12 @@ export const UserLoginHistory: React.FC = () => {
                     <div className="flex items-center space-x-2">
                       <span className="text-sm">{formatUserName(user)}</span>
                       {user.is_premium && (
-                        <Crown className="h-3 w-3 text-yellow-500" title="Telegram Premium" />
+                        <div className="relative group">
+                          <Crown className="h-3 w-3 text-yellow-500" />
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                            Telegram Premium
+                          </div>
+                        </div>
                       )}
                     </div>
                   </TableCell>
