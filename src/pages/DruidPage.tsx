@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useTelegramContext } from '@/components/TelegramProvider';
 import { ZodiacSelector } from '@/components/ui/zodiac-selector';
@@ -159,7 +158,7 @@ export const DruidPage: React.FC = () => {
                     channels={requiredChannels}
                     subscriptions={subscriptions}
                     onCheckSubscription={checkSubscription}
-                    isChecking={checkingChannel}
+                    isChecking={isChecking}
                   />
                 ) : (
                   <div className="text-center py-8">
