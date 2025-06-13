@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { WelcomeScreen } from '@/components/WelcomeScreen';
 import { ChannelRequirement } from '@/components/ChannelRequirement';
@@ -25,9 +26,7 @@ export const HomePage: React.FC = () => {
     data: subscriptionData, 
     isLoading: subscriptionsLoading, 
     error: subscriptionsError,
-    subscriptions,
-    isChecking,
-    checkSubscription
+    refetch
   } = useUserSubscriptions();
 
   const { data: channels = [], isLoading: channelsLoading } = useChannels();
@@ -108,10 +107,10 @@ export const HomePage: React.FC = () => {
   if (subscriptionData?.hasUnsubscribedChannels) {
     return (
       <ChannelRequirement 
-        channels={channels.filter(c => c.required)} 
-        subscriptions={subscriptions}
-        onCheckSubscription={checkSubscription}
-        isChecking={isChecking}
+        channels={channels.filter(c => subscriptionData.missingChannels.some(mc => mc.id === c.id))} 
+        subscriptions={{}}
+        onCheckSubscription={() => refetch()}
+        isChecking={false}
       />
     );
   }
