@@ -16,7 +16,11 @@ import { useToast } from '@/hooks/use-toast';
 export const DruidPage: React.FC = () => {
   const { toast } = useToast();
   const { isAuthenticated, authenticatedUser } = useTelegramContext();
-  const { subscriptions, hasUnsubscribedChannels, isLoading: subscriptionsLoading } = useUserSubscriptions();
+  const subscriptionsQuery = useUserSubscriptions();
+  const { subscriptions, isLoading: subscriptionsLoading } = subscriptionsQuery;
+  
+  // Извлекаем hasUnsubscribedChannels из данных запроса
+  const hasUnsubscribedChannels = subscriptionsQuery.data?.hasUnsubscribedChannels || false;
   
   const [selectedSign, setSelectedSign] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('horoscope');
