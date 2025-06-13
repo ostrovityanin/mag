@@ -25,10 +25,19 @@ export const useUserSubscriptions = () => {
       console.log('Telegram ID пользователя:', authenticatedUser.telegram_id);
 
       try {
-        // Получаем все каналы
-        const { data: channels, error: channelsError } = await supabase
-          .from('required_channels')
-          .select('*')
+        // Получаем каналы для приложения druid через новую структуру
+        const { data: appChannels, error: channelsError } = await supabase
+          .from('app_channels')
+          .select(`
+            required,
+            channels (
+              id,
+              username,
+              name,
+              chat_id
+            )
+          `)
+          .eq('app', 'druid')
           .eq('required', true);
 
         if (channelsError) {
@@ -36,7 +45,7 @@ export const useUserSubscriptions = () => {
           throw channelsError;
         }
 
-        if (!channels || channels.length === 0) {
+        if (!appChannels || appChannels.length === 0) {
           console.log('Нет обязательных каналов для проверки');
           
           logAdminAction({
@@ -62,29 +71,35 @@ export const useUserSubscriptions = () => {
         const subscriptions: Record<string, boolean> = {};
         let hasUnsubscribedChannels = false;
 
-        for (const channel of channels) {
+        for (const appChannel of appChannels) {
+          const channel = appChannel.channels;
+          if (!channel) continue;
+          
           try {
-            const { data, error } = await supabase.functions.invoke('check-telegram-subscription', {
+            console.log('Проверяем канал:', channel.username);
+            
+            const { data, error } = await supabase.functions.invoke('simple-check-subscription', {
               body: {
                 userId: authenticatedUser.telegram_id.toString(),
-                channelId: channel.id,
-                username: authenticatedUser.username || '',
+                channelId: channel.username, // Используем username как channelId
               },
             });
 
             if (error) {
-              console.error(`Ошибка проверки канала ${channel.id}:`, error);
-              subscriptions[channel.id] = false;
+              console.error(`Ошибка проверки канала ${channel.username}:`, error);
+              subscriptions[channel.username] = false;
               hasUnsubscribedChannels = true;
             } else {
-              subscriptions[channel.id] = data?.isSubscribed || false;
-              if (!data?.isSubscribed) {
+              const isSubscribed = data?.isSubscribed || false;
+              subscriptions[channel.username] = isSubscribed;
+              if (!isSubscribed) {
                 hasUnsubscribedChannels = true;
               }
+              console.log(`Канал ${channel.username}: подписка ${isSubscribed ? 'есть' : 'отсутствует'}`);
             }
           } catch (error) {
-            console.error(`Ошибка при проверке канала ${channel.id}:`, error);
-            subscriptions[channel.id] = false;
+            console.error(`Ошибка при проверке канала ${channel.username}:`, error);
+            subscriptions[channel.username] = false;
             hasUnsubscribedChannels = true;
           }
         }
@@ -96,12 +111,12 @@ export const useUserSubscriptions = () => {
           log_type: 'data_query',
           operation: 'check_user_subscriptions',
           details: { 
-            channels_checked: channels.length,
+            channels_checked: appChannels.length,
             subscriptions_result: subscriptions,
             has_unsubscribed: hasUnsubscribedChannels,
             user_id: authenticatedUser.telegram_id,
           },
-          user_count: channels.length,
+          user_count: appChannels.length,
           filtered_count: Object.values(subscriptions).filter(Boolean).length,
           telegram_user_id: authenticatedUser.telegram_id,
           execution_time_ms: Date.now() - startTime,
@@ -134,9 +149,9 @@ export const useUserSubscriptions = () => {
     refetchInterval: 10 * 60 * 1000, // 10 минут
   });
 
-  const checkSubscription = async (channelId: string, username: string) => {
+  const checkSubscription = async (channelId: string) => {
     console.log('=== НАЧАЛО ФУНКЦИИ checkSubscription ===');
-    console.log('Параметры:', { channelId, username });
+    console.log('Параметры:', { channelId });
     console.log('authenticatedUser:', authenticatedUser);
     
     if (!authenticatedUser) {
@@ -151,14 +166,12 @@ export const useUserSubscriptions = () => {
       console.log('Вызов edge function с параметрами:', {
         userId: authenticatedUser.telegram_id.toString(),
         channelId: channelId,
-        username: authenticatedUser.username || '',
       });
       
-      const { data, error } = await supabase.functions.invoke('check-telegram-subscription', {
+      const { data, error } = await supabase.functions.invoke('simple-check-subscription', {
         body: {
           userId: authenticatedUser.telegram_id.toString(),
           channelId: channelId,
-          username: authenticatedUser.username || '',
         },
       });
 
@@ -215,22 +228,15 @@ export const useUserSubscriptions = () => {
     }
   };
 
-  // Создаем объект subscriptions из данных ответа
-  const subscriptions: Record<string, boolean> = {};
-  if (subscriptionQuery.data?.subscriptions) {
-    Object.keys(subscriptionQuery.data.subscriptions).forEach(channelId => {
-      subscriptions[channelId] = subscriptionQuery.data.subscriptions[channelId];
-    });
-  }
-
   console.log('=== useUserSubscriptions РЕЗУЛЬТАТ ===');
-  console.log('subscriptions:', subscriptions);
+  console.log('subscriptions:', subscriptionsQuery.data?.subscriptions || {});
+  console.log('hasUnsubscribedChannels:', subscriptionsQuery.data?.hasUnsubscribedChannels || false);
   console.log('isChecking:', isChecking);
-  console.log('checkSubscription функция:', typeof checkSubscription);
 
   return {
-    ...subscriptionQuery,
-    subscriptions,
+    ...subscriptionsQuery,
+    subscriptions: subscriptionsQuery.data?.subscriptions || {},
+    hasUnsubscribedChannels: subscriptionsQuery.data?.hasUnsubscribedChannels || false,
     isChecking,
     checkSubscription,
   };

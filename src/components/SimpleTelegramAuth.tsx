@@ -10,23 +10,28 @@ import { TelegramUser } from '@/types/telegram';
 
 const SimpleTelegramAuth: React.FC = () => {
   const [user, setUser] = useState<TelegramUser | null>(null);
-  const [subscribed, setSubscribed] = useState<boolean | null>(null);
+  const [subscriptions, setSubscriptions] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [telegramWebAppReady, setTelegramWebAppReady] = useState(false);
+  const [channelsToCheck] = useState(['@luizahey']); // Список каналов для проверки
 
-  const CHANNEL_ID = '@luizahey'; // Канал для проверки подписки
-
-  const handleCheckSubscription = async (userId: number) => {
+  const handleCheckSubscriptions = async (userId: number) => {
     try {
       setLoading(true);
       setError(null);
       
-      const isSubscribed = await checkUserSubscription(userId, CHANNEL_ID);
-      setSubscribed(isSubscribed);
+      const subscriptionsResult: Record<string, boolean> = {};
+      
+      for (const channelId of channelsToCheck) {
+        const isSubscribed = await checkUserSubscription(userId, channelId);
+        subscriptionsResult[channelId] = isSubscribed;
+      }
+      
+      setSubscriptions(subscriptionsResult);
     } catch (err) {
-      console.error('Ошибка при проверке подписки:', err);
-      setError(err instanceof Error ? err.message : 'Ошибка проверки подписки');
+      console.error('Ошибка при проверке подписок:', err);
+      setError(err instanceof Error ? err.message : 'Ошибка проверки подписок');
     } finally {
       setLoading(false);
     }
@@ -66,8 +71,8 @@ const SimpleTelegramAuth: React.FC = () => {
         
         if (initUser && initUser.id) {
           setUser(initUser);
-          // Сразу проверяем подписку
-          handleCheckSubscription(initUser.id);
+          // Сразу проверяем подписки
+          handleCheckSubscriptions(initUser.id);
         } else {
           console.warn('Пользователь не найден в Telegram WebApp');
         }
@@ -107,12 +112,12 @@ const SimpleTelegramAuth: React.FC = () => {
     }
   };
 
-  const handleOpenChannel = () => {
-    console.log('Открываем канал для подписки');
+  const handleOpenChannel = (channelId: string) => {
+    console.log('Открываем канал для подписки:', channelId);
     
     if (!window.Telegram?.WebApp) {
       // Fallback для браузера
-      const channelUrl = `https://t.me/${CHANNEL_ID.replace('@', '')}`;
+      const channelUrl = `https://t.me/${channelId.replace('@', '')}`;
       window.open(channelUrl, '_blank');
       return;
     }
@@ -121,26 +126,30 @@ const SimpleTelegramAuth: React.FC = () => {
     
     try {
       // Используем метод WebApp для открытия чата
-      if (tg.openChat) {
-        tg.openChat(CHANNEL_ID);
+      if (tg.openTelegramLink) {
+        tg.openTelegramLink(`https://t.me/${channelId.replace('@', '')}`);
       } else {
         // Fallback для браузера
-        const channelUrl = `https://t.me/${CHANNEL_ID.replace('@', '')}`;
+        const channelUrl = `https://t.me/${channelId.replace('@', '')}`;
         window.open(channelUrl, '_blank');
       }
     } catch (err) {
       console.error('Ошибка при открытии канала:', err);
       // Fallback для браузера
-      const channelUrl = `https://t.me/${CHANNEL_ID.replace('@', '')}`;
+      const channelUrl = `https://t.me/${channelId.replace('@', '')}`;
       window.open(channelUrl, '_blank');
     }
   };
 
   const handleCheckAgain = () => {
     if (user) {
-      handleCheckSubscription(user.id);
+      handleCheckSubscriptions(user.id);
     }
   };
+
+  // Проверяем, есть ли неподписанные каналы
+  const hasUnsubscribedChannels = Object.values(subscriptions).some(isSubscribed => !isSubscribed);
+  const allChannelsChecked = Object.keys(subscriptions).length === channelsToCheck.length;
 
   // 1) Если пользователь не найден - показываем кнопку входа
   if (!user) {
@@ -183,14 +192,14 @@ const SimpleTelegramAuth: React.FC = () => {
     );
   }
 
-  // 2) Пока проверяем подписку - показываем загрузку
-  if (subscribed === null || loading) {
+  // 2) Пока проверяем подписки - показываем загрузку
+  if (!allChannelsChecked || loading) {
     return (
       <Card className="max-w-md mx-auto mt-8">
         <CardHeader className="text-center">
           <CardTitle className="flex items-center justify-center space-x-2">
             <User className="h-5 w-5" />
-            <span>Проверка подписки</span>
+            <span>Проверка подписок</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="text-center space-y-4">
@@ -205,7 +214,7 @@ const SimpleTelegramAuth: React.FC = () => {
           
           <div className="flex items-center justify-center space-x-2 text-blue-600">
             <LoadingSpinner className="h-4 w-4" />
-            <span>Проверяем подписку на канал...</span>
+            <span>Проверяем подписки на каналы...</span>
           </div>
           
           {error && (
@@ -218,14 +227,16 @@ const SimpleTelegramAuth: React.FC = () => {
     );
   }
 
-  // 3) Если не подписан - БЛОКИРУЕМ функционал и требуем подписку
-  if (!subscribed) {
+  // 3) Если есть неподписанные каналы - БЛОКИРУЕМ функционал и требуем подписки
+  if (hasUnsubscribedChannels) {
+    const unsubscribedChannels = channelsToCheck.filter(channelId => !subscriptions[channelId]);
+    
     return (
       <Card className="max-w-md mx-auto mt-8 border-yellow-200">
         <CardHeader className="text-center">
           <CardTitle className="flex items-center justify-center space-x-2 text-yellow-700">
             <AlertCircle className="h-5 w-5" />
-            <span>Требуется подписка</span>
+            <span>Требуются подписки</span>
           </CardTitle>
           <CardDescription>
             Для продолжения работы с приложением
@@ -244,19 +255,24 @@ const SimpleTelegramAuth: React.FC = () => {
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <div className="flex items-center justify-center space-x-2 text-yellow-800 mb-3">
               <XCircle className="h-5 w-5" />
-              <span>Вы не подписаны на канал</span>
+              <span>Необходимы подписки на каналы</span>
             </div>
-            <p className="text-sm text-yellow-700 mb-3">
-              Для доступа к приложению необходимо подписаться на канал{' '}
-              <strong>{CHANNEL_ID}</strong>
-            </p>
-            <Button 
-              onClick={handleOpenChannel}
-              className="w-full bg-yellow-600 hover:bg-yellow-700"
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Подписаться на канал
-            </Button>
+            
+            <div className="space-y-2 mb-4">
+              {unsubscribedChannels.map(channelId => (
+                <div key={channelId} className="flex items-center justify-between p-2 bg-white rounded border">
+                  <span className="text-sm font-medium">{channelId}</span>
+                  <Button 
+                    onClick={() => handleOpenChannel(channelId)}
+                    size="sm"
+                    className="bg-yellow-600 hover:bg-yellow-700"
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    Подписаться
+                  </Button>
+                </div>
+              ))}
+            </div>
           </div>
           
           <div className="pt-4 border-t">
@@ -275,7 +291,7 @@ const SimpleTelegramAuth: React.FC = () => {
                   Проверяем...
                 </>
               ) : (
-                'Проверить подписку'
+                'Проверить подписки'
               )}
             </Button>
           </div>
@@ -284,7 +300,7 @@ const SimpleTelegramAuth: React.FC = () => {
     );
   }
 
-  // 4) Если подписан - показываем основной интерфейс
+  // 4) Если подписан на все каналы - показываем основной интерфейс
   return (
     <Card className="max-w-md mx-auto mt-8 border-green-200">
       <CardHeader>
@@ -307,11 +323,15 @@ const SimpleTelegramAuth: React.FC = () => {
         </div>
         
         <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-          <div className="flex items-center space-x-2 text-green-700">
-            <CheckCircle className="h-4 w-4" />
-            <span className="text-sm font-medium">Вы подписаны на канал {CHANNEL_ID}</span>
+          <div className="space-y-2">
+            {channelsToCheck.map(channelId => (
+              <div key={channelId} className="flex items-center space-x-2 text-green-700">
+                <CheckCircle className="h-4 w-4" />
+                <span className="text-sm font-medium">Подписка на {channelId} ✓</span>
+              </div>
+            ))}
           </div>
-          <p className="text-xs text-green-600 mt-1">
+          <p className="text-xs text-green-600 mt-2">
             Теперь у вас есть полный доступ к приложению
           </p>
         </div>

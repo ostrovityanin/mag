@@ -63,6 +63,65 @@ export type Database = {
         }
         Relationships: []
       }
+      app_channels: {
+        Row: {
+          app: string
+          channel_id: string | null
+          created_at: string
+          id: string
+          required: boolean
+        }
+        Insert: {
+          app: string
+          channel_id?: string | null
+          created_at?: string
+          id?: string
+          required?: boolean
+        }
+        Update: {
+          app?: string
+          channel_id?: string | null
+          created_at?: string
+          id?: string
+          required?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_channels_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      channels: {
+        Row: {
+          chat_id: string | null
+          created_at: string
+          id: string
+          invite_link: string | null
+          name: string
+          username: string
+        }
+        Insert: {
+          chat_id?: string | null
+          created_at?: string
+          id?: string
+          invite_link?: string | null
+          name: string
+          username: string
+        }
+        Update: {
+          chat_id?: string | null
+          created_at?: string
+          id?: string
+          invite_link?: string | null
+          name?: string
+          username?: string
+        }
+        Relationships: []
+      }
       fortune_requests: {
         Row: {
           created_at: string
