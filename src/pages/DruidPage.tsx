@@ -17,12 +17,13 @@ export const DruidPage: React.FC = () => {
   const { toast } = useToast();
   const { isAuthenticated, authenticatedUser } = useTelegramContext();
   const {
-    data,
     isLoading: subscriptionsLoading,
     isFetching,
     refetch,
     error,
-  } = useUserSubscriptions('druid'); // Теперь явно передаем 'druid'
+    hasUnsubscribedChannels,
+    missingChannels,
+  } = useUserSubscriptions('druid');
   
   const [selectedSign, setSelectedSign] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('horoscope');
@@ -116,7 +117,7 @@ export const DruidPage: React.FC = () => {
     return <SimpleTelegramAuth />;
   }
 
-  // 2) Пока идёт первый запрос — спиннер
+  // 2) Пока идёт проверка подписок — спиннер
   if (subscriptionsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
@@ -162,10 +163,7 @@ export const DruidPage: React.FC = () => {
     );
   }
 
-  // 4) Распаковываем результат
-  const { hasUnsubscribedChannels, missingChannels } = data!;
-
-  // 5) Если есть каналы, на которые не подписан — показываем UI для подписки + проверки
+  // 4) Если есть каналы, на которые не подписан — показываем UI для подписки + проверки
   if (hasUnsubscribedChannels) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
@@ -248,7 +246,7 @@ export const DruidPage: React.FC = () => {
     );
   }
 
-  // 6) Всё ок — показываем основной контент приложения
+  // 5) Всё ок — показываем основной контент приложения
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
       <div className="container mx-auto px-4 py-6">

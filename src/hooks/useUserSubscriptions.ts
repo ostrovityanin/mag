@@ -165,9 +165,9 @@ export const useUserSubscriptions = (appCode: 'druid' | 'cookie' = 'druid') => {
         throw error;
       }
     },
-    enabled: isAuthenticated && !!authenticatedUser,
-    staleTime: 5 * 60 * 1000, // 5 минут
-    refetchInterval: 10 * 60 * 1000, // 10 минут
+    enabled: isAuthenticated && !!authenticatedUser, // Автоматический запуск когда аутентифицирован
+    staleTime: 0, // Всегда делаем свежий запрос
+    gcTime: 5 * 60 * 1000, // 5 минут кэш
   });
 
   const checkSubscription = async (channelId: string) => {
