@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useTelegramContext } from '@/components/TelegramProvider';
 import { useUserSubscriptions } from '@/hooks/useUserSubscriptions';
@@ -21,7 +22,7 @@ export const DruidPage: React.FC = () => {
     isFetching,
     refetch,
     error,
-  } = useUserSubscriptions('druid');
+  } = useUserSubscriptions('druid'); // Теперь явно передаем 'druid'
   
   const [selectedSign, setSelectedSign] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('horoscope');

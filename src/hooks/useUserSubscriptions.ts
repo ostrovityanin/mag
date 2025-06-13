@@ -26,27 +26,21 @@ export const useUserSubscriptions = (appCode: 'druid' | 'cookie' = 'druid') => {
       console.log('Telegram ID пользователя:', authenticatedUser.telegram_id);
 
       try {
-        // Получаем каналы для указанного приложения через новую структуру
-        const { data: appChannels, error: channelsError } = await supabase
+        // 1. Получаем связи для нужного приложения
+        const { data: appLinks, error: linkError } = await supabase
           .from('app_channels')
-          .select(`
-            required,
-            channels (
-              id,
-              username,
-              name,
-              chat_id
-            )
-          `)
+          .select('channel_id')
           .eq('app', appCode)
           .eq('required', true);
 
-        if (channelsError) {
-          console.error('Ошибка получения каналов:', channelsError);
-          throw channelsError;
+        if (linkError) {
+          console.error('Ошибка получения связей приложения с каналами:', linkError);
+          throw linkError;
         }
 
-        if (!appChannels || appChannels.length === 0) {
+        console.log('Найденные связи app_channels:', appLinks);
+
+        if (!appLinks || appLinks.length === 0) {
           console.log(`Нет обязательных каналов для приложения ${appCode}`);
           
           logAdminAction({
@@ -66,17 +60,40 @@ export const useUserSubscriptions = (appCode: 'druid' | 'cookie' = 'druid') => {
           return {
             subscriptions: {},
             hasUnsubscribedChannels: false,
-            missingChannels: []
+            missingChannels: [],
+            allChannels: []
           };
         }
 
-        // Извлекаем каналы и формируем массив для проверки
-        const channels = appChannels.map(ac => ac.channels).filter(Boolean);
-        const channelUsernames = channels.map(ch => ch.username);
+        // 2. Получаем сами каналы по ID
+        const channelIds = appLinks.map(link => link.channel_id);
+        const { data: channels, error: channelsError } = await supabase
+          .from('channels')
+          .select('id, username, name, chat_id')
+          .in('id', channelIds);
 
+        if (channelsError) {
+          console.error('Ошибка получения каналов:', channelsError);
+          throw channelsError;
+        }
+
+        console.log('Найденные каналы:', channels);
+
+        if (!channels || channels.length === 0) {
+          console.log('Каналы не найдены в таблице channels');
+          return {
+            subscriptions: {},
+            hasUnsubscribedChannels: false,
+            missingChannels: [],
+            allChannels: []
+          };
+        }
+
+        // 3. Формируем массив юзернеймов для проверки
+        const channelUsernames = channels.map(ch => ch.username).filter(Boolean);
         console.log('Каналы для проверки:', channelUsernames);
 
-        // Вызываем Edge Function для массовой проверки подписок
+        // 4. Вызываем Edge Function для массовой проверки подписок
         const { data, error } = await supabase.functions.invoke('simple-check-subscription', {
           body: {
             userId: authenticatedUser.telegram_id.toString(),
@@ -91,7 +108,7 @@ export const useUserSubscriptions = (appCode: 'druid' | 'cookie' = 'druid') => {
 
         console.log('Результат проверки от Edge Function:', data);
 
-        // Обрабатываем результат проверки
+        // 5. Обрабатываем результат проверки
         const subscriptions: Record<string, boolean> = data?.subscriptions || {};
         const missingChannels = channels.filter(ch => !subscriptions[ch.username]);
         const hasUnsubscribedChannels = missingChannels.length > 0;
