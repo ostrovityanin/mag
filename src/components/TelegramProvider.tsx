@@ -38,24 +38,40 @@ export const TelegramProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   // Автоматически аутентифицируем пользователя, когда данные Telegram загружены
   useEffect(() => {
+    console.log('=== ПРОВЕРКА АВТОМАТИЧЕСКОЙ АУТЕНТИФИКАЦИИ ===');
+    console.log('telegramData.isLoading:', telegramData.isLoading);
+    console.log('telegramData.user:', telegramData.user);
+    console.log('authLoading:', authLoading);
+    console.log('authenticatedUser:', authenticatedUser);
+    
     if (!telegramData.isLoading && telegramData.user && !authLoading && !authenticatedUser) {
-      console.log('=== АВТОМАТИЧЕСКАЯ АУТЕНТИФИКАЦИЯ ===');
+      console.log('=== ЗАПУСК АВТОМАТИЧЕСКОЙ АУТЕНТИФИКАЦИИ ===');
       console.log('Telegram пользователь найден, начинаем аутентификацию:', telegramData.user);
       
-      authenticateUser(telegramData.user);
+      authenticateUser(telegramData.user).then((success) => {
+        console.log('Результат аутентификации:', success);
+      }).catch((error) => {
+        console.error('Ошибка аутентификации:', error);
+      });
     }
   }, [telegramData.user, telegramData.isLoading, authLoading, authenticatedUser, authenticateUser]);
 
-  // Логирование состояния
+  // Детальное логирование состояния каждые 2 секунды для отладки
   useEffect(() => {
-    console.log('=== TELEGRAM PROVIDER СОСТОЯНИЕ ===');
-    console.log('WebApp доступен:', !!telegramData.webApp);
-    console.log('Telegram загрузка завершена:', !telegramData.isLoading);
-    console.log('Telegram пользователь:', telegramData.user);
-    console.log('Аутентифицированный пользователь:', authenticatedUser);
-    console.log('Загрузка аутентификации:', authLoading);
-    console.log('Ошибка аутентификации:', authError);
-    console.log('=== КОНЕЦ PROVIDER ЛОГОВ ===');
+    const interval = setInterval(() => {
+      console.log('=== TELEGRAM PROVIDER СОСТОЯНИЕ (периодический лог) ===');
+      console.log('WebApp доступен:', !!telegramData.webApp);
+      console.log('Telegram загрузка завершена:', !telegramData.isLoading);
+      console.log('Telegram пользователь:', telegramData.user);
+      console.log('Аутентифицированный пользователь:', authenticatedUser);
+      console.log('Загрузка аутентификации:', authLoading);
+      console.log('Ошибка аутентификации:', authError);
+      console.log('URL:', window.location.href);
+      console.log('User Agent:', navigator.userAgent);
+      console.log('=== КОНЕЦ ПЕРИОДИЧЕСКОГО ЛОГА ===');
+    }, 2000);
+
+    return () => clearInterval(interval);
   }, [telegramData, authenticatedUser, authLoading, authError]);
 
   const contextValue: TelegramContextType = {
