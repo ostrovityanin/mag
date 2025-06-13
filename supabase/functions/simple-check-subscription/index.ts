@@ -13,10 +13,21 @@ serve(async (req) => {
   }
 
   try {
-    console.log('=== ПРОСТАЯ ПРОВЕРКА ПОДПИСКИ ===');
+    console.log('=== МАССОВАЯ ПРОВЕРКА ПОДПИСОК ===');
     
-    const { userId, channelId } = await req.json();
-    console.log('Параметры:', { userId, channelId });
+    const { userId, channelIds } = await req.json();
+    console.log('Параметры:', { userId, channelIds });
+
+    if (!Array.isArray(channelIds)) {
+      console.error('channelIds должен быть массивом');
+      return new Response(
+        JSON.stringify({ error: 'channelIds должен быть массивом' }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
 
     // Получаем токен бота из секретов
     const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
@@ -31,38 +42,44 @@ serve(async (req) => {
       );
     }
 
-    // Проверяем подписку через Telegram API
-    const telegramUrl = `https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${encodeURIComponent(channelId)}&user_id=${userId}`;
-    console.log('Запрос к Telegram API:', telegramUrl.replace(botToken, '[СКРЫТ]'));
-
-    const response = await fetch(telegramUrl);
-    const data = await response.json();
+    // Проверяем подписки для каждого канала
+    const subscriptions: Record<string, boolean> = {};
     
-    console.log('Ответ Telegram API:', data);
+    for (const channelId of channelIds) {
+      try {
+        console.log(`Проверяем канал: ${channelId}`);
+        
+        const telegramUrl = `https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${encodeURIComponent(channelId)}&user_id=${userId}`;
+        console.log('Запрос к Telegram API:', telegramUrl.replace(botToken, '[СКРЫТ]'));
 
-    if (!data.ok) {
-      console.error('Ошибка Telegram API:', data);
-      return new Response(
-        JSON.stringify({ 
-          isSubscribed: false, 
-          error: data.description || 'Ошибка проверки подписки'
-        }),
-        { 
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        const response = await fetch(telegramUrl);
+        const data = await response.json();
+        
+        console.log(`Ответ Telegram API для ${channelId}:`, data);
+
+        if (!data.ok) {
+          console.error(`Ошибка Telegram API для канала ${channelId}:`, data);
+          subscriptions[channelId] = false;
+          continue;
         }
-      );
+
+        // Проверяем статус пользователя в канале
+        const memberStatus = data.result?.status;
+        const isSubscribed = ['member', 'administrator', 'creator'].includes(memberStatus);
+        
+        console.log(`Канал ${channelId} - статус пользователя: ${memberStatus}, подписан: ${isSubscribed}`);
+        subscriptions[channelId] = isSubscribed;
+        
+      } catch (error) {
+        console.error(`Ошибка при проверке канала ${channelId}:`, error);
+        subscriptions[channelId] = false;
+      }
     }
 
-    // Проверяем статус пользователя в канале
-    const memberStatus = data.result?.status;
-    const isSubscribed = ['member', 'administrator', 'creator'].includes(memberStatus);
-    
-    console.log('Статус пользователя:', memberStatus);
-    console.log('Подписан:', isSubscribed);
+    console.log('Итоговый результат проверки подписок:', subscriptions);
 
     return new Response(
-      JSON.stringify({ isSubscribed }),
+      JSON.stringify({ subscriptions }),
       { 
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -73,7 +90,7 @@ serve(async (req) => {
     console.error('Ошибка в функции:', error);
     return new Response(
       JSON.stringify({ 
-        isSubscribed: false, 
+        subscriptions: {},
         error: 'Внутренняя ошибка сервера'
       }),
       { 
