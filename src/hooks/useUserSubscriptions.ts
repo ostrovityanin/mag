@@ -229,14 +229,14 @@ export const useUserSubscriptions = () => {
   };
 
   console.log('=== useUserSubscriptions РЕЗУЛЬТАТ ===');
-  console.log('subscriptions:', subscriptionsQuery.data?.subscriptions || {});
-  console.log('hasUnsubscribedChannels:', subscriptionsQuery.data?.hasUnsubscribedChannels || false);
+  console.log('subscriptions:', subscriptionQuery.data?.subscriptions || {});
+  console.log('hasUnsubscribedChannels:', subscriptionQuery.data?.hasUnsubscribedChannels || false);
   console.log('isChecking:', isChecking);
 
   return {
-    ...subscriptionsQuery,
-    subscriptions: subscriptionsQuery.data?.subscriptions || {},
-    hasUnsubscribedChannels: subscriptionsQuery.data?.hasUnsubscribedChannels || false,
+    ...subscriptionQuery,
+    subscriptions: subscriptionQuery.data?.subscriptions || {},
+    hasUnsubscribedChannels: subscriptionQuery.data?.hasUnsubscribedChannels || false,
     isChecking,
     checkSubscription,
   };
