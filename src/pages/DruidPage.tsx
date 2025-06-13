@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useTelegramContext } from '@/components/TelegramProvider';
 import { useUserSubscriptions } from '@/hooks/useUserSubscriptions';
@@ -100,11 +99,8 @@ export const DruidPage: React.FC = () => {
       const tg = window.Telegram.WebApp;
       
       try {
-        if (tg.openTelegramLink) {
-          tg.openTelegramLink(channelUrl);
-        } else {
-          window.open(channelUrl, '_blank');
-        }
+        // Используем стандартный способ открытия внешних ссылок
+        window.open(channelUrl, '_blank');
       } catch (err) {
         console.error('Ошибка при открытии канала через WebApp:', err);
         window.open(channelUrl, '_blank');
