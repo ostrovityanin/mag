@@ -1,16 +1,16 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useTelegramContext } from '@/components/TelegramProvider';
 import { useUserSubscriptions } from '@/hooks/useUserSubscriptions';
 import SimpleTelegramAuth from '@/components/SimpleTelegramAuth';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, TreePine, Star } from 'lucide-react';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { ZodiacSelector } from '@/components/ui/zodiac-selector';
 import { HoroscopeCard } from '@/components/HoroscopeCard';
 import { FortuneCard } from '@/components/FortuneCard';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Star, TreePine, AlertTriangle, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export const DruidPage: React.FC = () => {
@@ -23,20 +23,19 @@ export const DruidPage: React.FC = () => {
     isFetching,
     refetch,
   } = useUserSubscriptions('druid');
-  
-  const [selectedSign, setSelectedSign] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('horoscope');
-  const [isAppLoading, setIsAppLoading] = useState(false);
-  const [todayHoroscope, setTodayHoroscope] = useState<string | null>(null);
-  const [todayFortune, setTodayFortune] = useState<string | null>(null);
 
-  // 1) При загрузке, если залогинен, сразу запускаем проверку
+  const [selectedSign, setSelectedSign] = React.useState<string | null>(null);
+  const [activeTab, setActiveTab] = React.useState('horoscope');
+  const [isAppLoading, setIsAppLoading] = React.useState(false);
+  const [todayHoroscope, setTodayHoroscope] = React.useState<string | null>(null);
+  const [todayFortune, setTodayFortune] = React.useState<string | null>(null);
+
+  // 1) При первой активации, как только залогинены — запускаем проверку
   useEffect(() => {
-    if (isAuthenticated && authenticatedUser) {
-      console.log('=== ЗАПУСК АВТОМАТИЧЕСКОЙ ПРОВЕРКИ ПОДПИСОК ===');
+    if (isAuthenticated) {
       refetch();
     }
-  }, [isAuthenticated, authenticatedUser, refetch]);
+  }, [isAuthenticated, refetch]);
 
   const handleSignSelect = (sign: string) => {
     setSelectedSign(sign);
@@ -106,7 +105,6 @@ export const DruidPage: React.FC = () => {
     
     if (window.Telegram?.WebApp) {
       try {
-        // Пробуем использовать стандартный метод WebApp
         window.open(channelUrl, '_blank');
       } catch (err) {
         console.error('Ошибка при открытии канала через WebApp:', err);
@@ -117,52 +115,33 @@ export const DruidPage: React.FC = () => {
     }
   };
 
-  // 2) Не залогинен — показываем авторизацию
-  if (!isAuthenticated || !authenticatedUser) {
+  // 2) Если не залогинены — переадресуем на Telegram-Auth
+  if (!isAuthenticated) {
     return <SimpleTelegramAuth />;
   }
 
-  // 3) Пока идёт первый запрос — спиннер
+  // 3) Ожидаем результат проверки подписок
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
-        <div className="container mx-auto px-4 py-6">
-          <div className="text-center mb-8">
-            <div className="flex items-center justify-center space-x-2 mb-4">
-              <TreePine className="h-8 w-8 text-green-600" />
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-                Друидские Предсказания
-              </h1>
-            </div>
-            <p className="text-gray-600 text-lg">
-              Проверяем доступ...
-            </p>
-          </div>
-          <div className="flex justify-center">
-            <LoadingSpinner size="lg" />
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center">
+        <div className="text-center">
+          <LoadingSpinner size="lg" />
+          <p className="mt-4 text-gray-600 text-lg">Проверяем подписки...</p>
         </div>
       </div>
     );
   }
 
-  // 4) Ошибка запроса
+  // 4) Ошибка вызова функции — даём «повторить»
   if (isError) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
-        <div className="container mx-auto px-4 py-6">
-          <div className="text-center">
-            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2 text-red-600">
-              Ошибка проверки подписок
-            </h2>
-            <p className="text-gray-600 mb-4">
-              Не удалось проверить подписки на каналы
-            </p>
-            <Button onClick={() => refetch()} variant="outline">
-              Попробовать снова
-            </Button>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center">
+        <div className="text-center p-4">
+          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 mb-4">Ошибка проверки подписок</p>
+          <Button onClick={() => refetch()} variant="outline">
+            Повторить
+          </Button>
         </div>
       </div>
     );
@@ -170,85 +149,80 @@ export const DruidPage: React.FC = () => {
 
   const { hasUnsubscribedChannels, missingChannels } = data!;
 
-  // 5) Если есть неподписанные — показываем список и кнопки
+  // 5) Если хотя бы один канал не подписан — показываем UI подписки
   if (hasUnsubscribedChannels) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
-        <div className="container mx-auto px-4 py-6">
-          <div className="text-center mb-8">
-            <div className="flex items-center justify-center space-x-2 mb-4">
-              <TreePine className="h-8 w-8 text-green-600" />
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-                Друидские Предсказания
-              </h1>
-            </div>
-          </div>
-
-          <div className="max-w-md mx-auto">
-            <Card className="border-yellow-200">
-              <CardHeader className="text-center">
-                <CardTitle className="flex items-center justify-center space-x-2 text-yellow-700">
-                  <AlertTriangle className="h-5 w-5" />
-                  <span>Требуются подписки</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-center space-y-4">
-                <div>
-                  <p className="text-lg font-medium">
-                    Привет, {authenticatedUser.first_name}!
-                  </p>
-                  <p className="text-sm text-gray-600 mt-2">
-                    Для доступа подпишитесь на каналы:
-                  </p>
-                </div>
-                
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <div className="space-y-2 mb-4">
-                    {missingChannels.map((channel: any) => (
-                      <div key={channel.id} className="flex items-center justify-between p-2 bg-white rounded border">
-                        <span className="text-sm font-medium">{channel.username || channel.name}</span>
-                        <Button 
-                          onClick={() => handleOpenChannel(channel)}
-                          size="sm"
-                          className="bg-yellow-600 hover:bg-yellow-700"
-                        >
-                          <ExternalLink className="h-3 w-3 mr-1" />
-                          Перейти
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div className="pt-4 border-t">
-                  <p className="text-sm text-gray-600 mb-3">
-                    Уже подписались? Проверьте еще раз:
-                  </p>
-                  <Button
-                    onClick={() => refetch()}
-                    disabled={isFetching}
-                    size="lg"
-                    className="w-full"
-                  >
-                    {isFetching ? (
-                      <>
-                        <LoadingSpinner size="sm" className="mr-2" />
-                        Проверяем...
-                      </>
-                    ) : (
-                      'Проверить подписки'
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex flex-col items-center justify-center p-4">
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center space-x-2 mb-4">
+            <TreePine className="h-8 w-8 text-green-600" />
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+              Друидские Предсказания
+            </h1>
           </div>
         </div>
+
+        <Card className="max-w-md border-yellow-200">
+          <CardHeader className="text-center">
+            <CardTitle className="flex items-center justify-center space-x-2 text-yellow-700">
+              <AlertTriangle className="h-5 w-5" />
+              <span>Требуются подписки</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p className="text-lg font-medium">
+                Привет, {authenticatedUser?.first_name}!
+              </p>
+              <p className="text-sm text-gray-600 mt-2">
+                Для доступа подпишитесь на каналы:
+              </p>
+            </div>
+            
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="space-y-2 mb-4">
+                {missingChannels.map((channel: any) => (
+                  <div key={channel.id} className="flex items-center justify-between p-2 bg-white rounded border">
+                    <span className="text-sm font-medium">{channel.username || channel.name}</span>
+                    <Button 
+                      onClick={() => handleOpenChannel(channel)}
+                      size="sm"
+                      className="bg-yellow-600 hover:bg-yellow-700"
+                    >
+                      Перейти
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="pt-4 border-t">
+              <p className="text-sm text-gray-600 mb-3">
+                Уже подписались? Проверьте еще раз:
+              </p>
+              <Button
+                onClick={() => refetch()}
+                disabled={isFetching}
+                size="lg"
+                className="w-full"
+              >
+                {isFetching ? (
+                  <>
+                    <LoadingSpinner size="sm" className="mr-2" />
+                    Проверяем...
+                  </>
+                ) : (
+                  'Проверить подписки'
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  // 6) Всё подписан — основной контент
+  // 6) Всё подписан — показываем основной контент
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
       <div className="container mx-auto px-4 py-6">
@@ -260,7 +234,7 @@ export const DruidPage: React.FC = () => {
             </h1>
           </div>
           <p className="text-gray-600">
-            Добро пожаловать, {authenticatedUser.first_name}! 🌿
+            Добро пожаловать, {authenticatedUser?.first_name}! 🌿
           </p>
         </div>
 
