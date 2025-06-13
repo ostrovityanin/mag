@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -115,28 +114,27 @@ const SimpleTelegramAuth: React.FC = () => {
   const handleOpenChannel = (channelId: string) => {
     console.log('Открываем канал для подписки:', channelId);
     
-    if (!window.Telegram?.WebApp) {
-      // Fallback для браузера
-      const channelUrl = `https://t.me/${channelId.replace('@', '')}`;
-      window.open(channelUrl, '_blank');
-      return;
-    }
-
-    const tg = window.Telegram.WebApp;
+    // Создаем URL канала
+    const channelUrl = `https://t.me/${channelId.replace('@', '')}`;
     
-    try {
-      // Используем метод WebApp для открытия чата
-      if (tg.openTelegramLink) {
-        tg.openTelegramLink(`https://t.me/${channelId.replace('@', '')}`);
-      } else {
-        // Fallback для браузера
-        const channelUrl = `https://t.me/${channelId.replace('@', '')}`;
+    if (window.Telegram?.WebApp) {
+      const tg = window.Telegram.WebApp;
+      
+      try {
+        // Попробуем использовать openChat если доступен
+        if (tg.openChat) {
+          tg.openChat(channelId.replace('@', ''));
+        } else {
+          // Fallback: открываем в новом окне
+          window.open(channelUrl, '_blank');
+        }
+      } catch (err) {
+        console.error('Ошибка при открытии канала через WebApp:', err);
+        // Fallback: открываем в новом окне
         window.open(channelUrl, '_blank');
       }
-    } catch (err) {
-      console.error('Ошибка при открытии канала:', err);
+    } else {
       // Fallback для браузера
-      const channelUrl = `https://t.me/${channelId.replace('@', '')}`;
       window.open(channelUrl, '_blank');
     }
   };
