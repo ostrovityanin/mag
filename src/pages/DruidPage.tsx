@@ -10,17 +10,19 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Star, TreePine, AlertTriangle } from 'lucide-react';
+import { Star, TreePine, AlertTriangle, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export const DruidPage: React.FC = () => {
   const { toast } = useToast();
   const { isAuthenticated, authenticatedUser } = useTelegramContext();
-  const subscriptionsQuery = useUserSubscriptions();
-  const { subscriptions, isLoading: subscriptionsLoading } = subscriptionsQuery;
-  
-  // Извлекаем hasUnsubscribedChannels из данных запроса
-  const hasUnsubscribedChannels = subscriptionsQuery.data?.hasUnsubscribedChannels || false;
+  const {
+    data,
+    isLoading: subscriptionsLoading,
+    isFetching,
+    refetch,
+    error,
+  } = useUserSubscriptions('druid');
   
   const [selectedSign, setSelectedSign] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('horoscope');
@@ -91,8 +93,83 @@ export const DruidPage: React.FC = () => {
     }
   };
 
-  // Если пользователь не аутентифицирован или не подписан - показываем SimpleTelegramAuth
-  if (!isAuthenticated || !authenticatedUser || subscriptionsLoading || hasUnsubscribedChannels) {
+  const handleOpenChannel = (channel: any) => {
+    const channelUrl = `https://t.me/${channel.username.replace('@', '')}`;
+    
+    if (window.Telegram?.WebApp) {
+      const tg = window.Telegram.WebApp;
+      
+      try {
+        if (tg.openTelegramLink) {
+          tg.openTelegramLink(channelUrl);
+        } else {
+          window.open(channelUrl, '_blank');
+        }
+      } catch (err) {
+        console.error('Ошибка при открытии канала через WebApp:', err);
+        window.open(channelUrl, '_blank');
+      }
+    } else {
+      window.open(channelUrl, '_blank');
+    }
+  };
+
+  // 1) Если не залогинены — показываем авторизацию
+  if (!isAuthenticated || !authenticatedUser) {
+    return <SimpleTelegramAuth />;
+  }
+
+  // 2) Пока идёт первый запрос — спиннер
+  if (subscriptionsLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
+        <div className="container mx-auto px-4 py-6">
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center space-x-2 mb-4">
+              <TreePine className="h-8 w-8 text-green-600" />
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                Друидские Предсказания
+              </h1>
+            </div>
+            <p className="text-gray-600 text-lg">
+              Древняя мудрость природы
+            </p>
+          </div>
+          <div className="flex justify-center">
+            <LoadingSpinner size="lg" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 3) Ошибка при проверке (нет сети, функция упала)
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
+        <div className="container mx-auto px-4 py-6">
+          <div className="text-center">
+            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2 text-red-600">
+              Ошибка проверки подписок
+            </h2>
+            <p className="text-gray-600 mb-4">
+              {String(error)}
+            </p>
+            <Button onClick={() => refetch()} variant="outline">
+              Попробовать снова
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 4) Распаковываем результат
+  const { hasUnsubscribedChannels, missingChannels } = data!;
+
+  // 5) Если есть каналы, на которые не подписан — показываем UI для подписки + проверки
+  if (hasUnsubscribedChannels) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
         <div className="container mx-auto px-4 py-6">
@@ -108,13 +185,73 @@ export const DruidPage: React.FC = () => {
             </p>
           </div>
 
-          <SimpleTelegramAuth />
+          <div className="max-w-md mx-auto">
+            <Card className="border-yellow-200">
+              <CardHeader className="text-center">
+                <CardTitle className="flex items-center justify-center space-x-2 text-yellow-700">
+                  <AlertTriangle className="h-5 w-5" />
+                  <span>Требуются подписки</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-center space-y-4">
+                <div>
+                  <p className="text-lg font-medium">
+                    Привет, {authenticatedUser.first_name}!
+                  </p>
+                </div>
+                
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-center justify-center space-x-2 text-yellow-800 mb-3">
+                    <AlertTriangle className="h-5 w-5" />
+                    <span>Необходимы подписки на каналы</span>
+                  </div>
+                  
+                  <div className="space-y-2 mb-4">
+                    {missingChannels.map((channel: any) => (
+                      <div key={channel.username || channel.name} className="flex items-center justify-between p-2 bg-white rounded border">
+                        <span className="text-sm font-medium">{channel.username || channel.name}</span>
+                        <Button 
+                          onClick={() => handleOpenChannel(channel)}
+                          size="sm"
+                          className="bg-yellow-600 hover:bg-yellow-700"
+                        >
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          Подписаться
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="pt-4 border-t">
+                  <p className="text-sm text-gray-600 mb-3">
+                    Уже подписались? Проверьте еще раз:
+                  </p>
+                  <Button
+                    onClick={() => refetch()}
+                    disabled={isFetching}
+                    size="lg"
+                    className="w-full"
+                  >
+                    {isFetching ? (
+                      <>
+                        <LoadingSpinner size="sm" className="mr-2" />
+                        Проверяем...
+                      </>
+                    ) : (
+                      'Проверить подписки'
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     );
   }
 
-  // Если пользователь аутентифицирован и подписан - показываем основное приложение
+  // 6) Всё ок — показываем основной контент приложения
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
       <div className="container mx-auto px-4 py-6">
