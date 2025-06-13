@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTelegramContext } from '@/components/TelegramProvider';
 import { useUserSubscriptions } from '@/hooks/useUserSubscriptions';
 import SimpleTelegramAuth from '@/components/SimpleTelegramAuth';
@@ -17,19 +17,26 @@ export const DruidPage: React.FC = () => {
   const { toast } = useToast();
   const { isAuthenticated, authenticatedUser } = useTelegramContext();
   const {
-    isLoading: subscriptionsLoading,
+    data,
+    isLoading,
+    isError,
     isFetching,
     refetch,
-    error,
-    hasUnsubscribedChannels,
-    missingChannels,
   } = useUserSubscriptions('druid');
   
   const [selectedSign, setSelectedSign] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('horoscope');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isAppLoading, setIsAppLoading] = useState(false);
   const [todayHoroscope, setTodayHoroscope] = useState<string | null>(null);
   const [todayFortune, setTodayFortune] = useState<string | null>(null);
+
+  // 1) При загрузке, если залогинен, сразу запускаем проверку
+  useEffect(() => {
+    if (isAuthenticated && authenticatedUser) {
+      console.log('=== ЗАПУСК АВТОМАТИЧЕСКОЙ ПРОВЕРКИ ПОДПИСОК ===');
+      refetch();
+    }
+  }, [isAuthenticated, authenticatedUser, refetch]);
 
   const handleSignSelect = (sign: string) => {
     setSelectedSign(sign);
@@ -38,7 +45,7 @@ export const DruidPage: React.FC = () => {
   const handleGetHoroscope = async () => {
     if (!selectedSign) return;
     
-    setIsLoading(true);
+    setIsAppLoading(true);
     
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -58,12 +65,12 @@ export const DruidPage: React.FC = () => {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsAppLoading(false);
     }
   };
 
   const handleGetFortune = async () => {
-    setIsLoading(true);
+    setIsAppLoading(true);
     
     try {
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -90,18 +97,16 @@ export const DruidPage: React.FC = () => {
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsAppLoading(false);
     }
   };
 
   const handleOpenChannel = (channel: any) => {
-    const channelUrl = `https://t.me/${channel.username.replace('@', '')}`;
+    const channelUrl = `https://t.me/${channel.username?.replace('@', '') || channel.name}`;
     
     if (window.Telegram?.WebApp) {
-      const tg = window.Telegram.WebApp;
-      
       try {
-        // Используем стандартный способ открытия внешних ссылок
+        // Пробуем использовать стандартный метод WebApp
         window.open(channelUrl, '_blank');
       } catch (err) {
         console.error('Ошибка при открытии канала через WebApp:', err);
@@ -112,13 +117,13 @@ export const DruidPage: React.FC = () => {
     }
   };
 
-  // 1) Если не залогинены — показываем авторизацию
+  // 2) Не залогинен — показываем авторизацию
   if (!isAuthenticated || !authenticatedUser) {
     return <SimpleTelegramAuth />;
   }
 
-  // 2) Пока идёт проверка подписок — спиннер
-  if (subscriptionsLoading) {
+  // 3) Пока идёт первый запрос — спиннер
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
         <div className="container mx-auto px-4 py-6">
@@ -130,7 +135,7 @@ export const DruidPage: React.FC = () => {
               </h1>
             </div>
             <p className="text-gray-600 text-lg">
-              Древняя мудрость природы
+              Проверяем доступ...
             </p>
           </div>
           <div className="flex justify-center">
@@ -141,8 +146,8 @@ export const DruidPage: React.FC = () => {
     );
   }
 
-  // 3) Ошибка при проверке (нет сети, функция упала)
-  if (error) {
+  // 4) Ошибка запроса
+  if (isError) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
         <div className="container mx-auto px-4 py-6">
@@ -152,7 +157,7 @@ export const DruidPage: React.FC = () => {
               Ошибка проверки подписок
             </h2>
             <p className="text-gray-600 mb-4">
-              {String(error)}
+              Не удалось проверить подписки на каналы
             </p>
             <Button onClick={() => refetch()} variant="outline">
               Попробовать снова
@@ -163,7 +168,9 @@ export const DruidPage: React.FC = () => {
     );
   }
 
-  // 4) Если есть каналы, на которые не подписан — показываем UI для подписки + проверки
+  const { hasUnsubscribedChannels, missingChannels } = data!;
+
+  // 5) Если есть неподписанные — показываем список и кнопки
   if (hasUnsubscribedChannels) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
@@ -175,9 +182,6 @@ export const DruidPage: React.FC = () => {
                 Друидские Предсказания
               </h1>
             </div>
-            <p className="text-gray-600 text-lg">
-              Древняя мудрость природы
-            </p>
           </div>
 
           <div className="max-w-md mx-auto">
@@ -193,17 +197,15 @@ export const DruidPage: React.FC = () => {
                   <p className="text-lg font-medium">
                     Привет, {authenticatedUser.first_name}!
                   </p>
+                  <p className="text-sm text-gray-600 mt-2">
+                    Для доступа подпишитесь на каналы:
+                  </p>
                 </div>
                 
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <div className="flex items-center justify-center space-x-2 text-yellow-800 mb-3">
-                    <AlertTriangle className="h-5 w-5" />
-                    <span>Необходимы подписки на каналы</span>
-                  </div>
-                  
                   <div className="space-y-2 mb-4">
                     {missingChannels.map((channel: any) => (
-                      <div key={channel.username || channel.name} className="flex items-center justify-between p-2 bg-white rounded border">
+                      <div key={channel.id} className="flex items-center justify-between p-2 bg-white rounded border">
                         <span className="text-sm font-medium">{channel.username || channel.name}</span>
                         <Button 
                           onClick={() => handleOpenChannel(channel)}
@@ -211,7 +213,7 @@ export const DruidPage: React.FC = () => {
                           className="bg-yellow-600 hover:bg-yellow-700"
                         >
                           <ExternalLink className="h-3 w-3 mr-1" />
-                          Подписаться
+                          Перейти
                         </Button>
                       </div>
                     ))}
@@ -246,7 +248,7 @@ export const DruidPage: React.FC = () => {
     );
   }
 
-  // 5) Всё ок — показываем основной контент приложения
+  // 6) Всё подписан — основной контент
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
       <div className="container mx-auto px-4 py-6">
@@ -303,11 +305,11 @@ export const DruidPage: React.FC = () => {
                       </p>
                       <Button
                         onClick={handleGetHoroscope}
-                        disabled={isLoading}
+                        disabled={isAppLoading}
                         className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
                         size="lg"
                       >
-                        {isLoading ? (
+                        {isAppLoading ? (
                           <>
                             <LoadingSpinner size="sm" className="mr-2" />
                             Читаю знаки природы...
@@ -349,11 +351,11 @@ export const DruidPage: React.FC = () => {
                       </p>
                       <Button
                         onClick={handleGetFortune}
-                        disabled={isLoading}
+                        disabled={isAppLoading}
                         className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
                         size="lg"
                       >
-                        {isLoading ? (
+                        {isAppLoading ? (
                           <>
                             <LoadingSpinner size="sm" className="mr-2" />
                             Получаю мудрость...
