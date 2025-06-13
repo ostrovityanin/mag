@@ -110,7 +110,7 @@ export const HomePage: React.FC = () => {
         channels={channels.filter(c => subscriptionData.missingChannels.some(mc => mc.id === c.id))} 
         subscriptions={{}}
         onCheckSubscription={() => refetch()}
-        isChecking={false}
+        isChecking={null}
       />
     );
   }
