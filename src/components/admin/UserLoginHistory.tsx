@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAdminLogs } from '@/hooks/useAdminLogs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +19,14 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+
+// Хелпер для безопасного доступа к полям details
+function getDetailsField<T = string>(details: unknown, key: string): T | undefined {
+  if (typeof details === 'object' && details !== null && key in details) {
+    return (details as Record<string, T>)[key];
+  }
+  return undefined;
+}
 
 export const UserLoginHistory: React.FC = () => {
   const { adminLogs, isLoading, logAdminAction } = useAdminLogs();
@@ -56,12 +63,18 @@ export const UserLoginHistory: React.FC = () => {
 
   // Применяем фильтры
   const filteredLogs = userLogs.filter(log => {
-    const matchesType = filterType === 'all' || log.operation.includes(filterType);
-    const matchesTelegram = searchTelegram === '' || 
+    const operationType =
+      filterType === 'all'
+        || (filterType === 'login' && log.operation.includes('login'))
+        || (filterType === 'registration' && log.operation.includes('registration'))
+        || (filterType === 'logout' && log.operation.includes('logout'))
+        || (filterType === 'subscription' && log.operation.includes('subscription'))
+    ;
+    // Поиск по Telegram ID
+    const matchesTelegram = searchTelegram === '' ||
       (log.telegram_user_id && log.telegram_user_id.toString().includes(searchTelegram)) ||
-      (log.details?.username && log.details.username.toLowerCase().includes(searchTelegram.toLowerCase()));
-    
-    return matchesType && matchesTelegram;
+      (typeof log.details === 'object' && !!getDetailsField(log.details, 'username') && getDetailsField(log.details, 'username')!.toLowerCase().includes(searchTelegram.toLowerCase()));
+    return operationType && matchesTelegram;
   });
 
   const getOperationIcon = (operation: string) => {
@@ -237,61 +250,67 @@ export const UserLoginHistory: React.FC = () => {
         <CardContent>
           <ScrollArea className="h-96">
             <div className="space-y-3">
-              {filteredLogs.map((log) => (
-                <div key={log.id} className="border rounded-lg p-4 bg-gray-50">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center space-x-2">
-                      {getOperationIcon(log.operation)}
-                      <Badge className={getOperationColor(log.operation, log.success)}>
-                        {getOperationTitle(log.operation)}
-                      </Badge>
-                      {log.telegram_user_id && (
-                        <span className="text-sm text-gray-600">
-                          ID: {log.telegram_user_id}
-                        </span>
-                      )}
-                      {log.details?.username && (
-                        <span className="text-sm text-gray-600">
-                          @{log.details.username}
-                        </span>
-                      )}
+              {filteredLogs.map((log) => {
+                // Все обращения к кастомным полям details теперь через getDetailsField
+                const username = typeof log.details === 'object' && getDetailsField<string>(log.details, 'username');
+                const first_name = typeof log.details === 'object' && getDetailsField<string>(log.details, 'first_name');
+                const last_name = typeof log.details === 'object' && getDetailsField<string>(log.details, 'last_name');
+                return (
+                  <div key={log.id} className="border rounded-lg p-4 bg-gray-50">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        {getOperationIcon(log.operation)}
+                        <Badge className={getOperationColor(log.operation, log.success)}>
+                          {getOperationTitle(log.operation)}
+                        </Badge>
+                        {log.telegram_user_id && (
+                          <span className="text-sm text-gray-600">
+                            ID: {log.telegram_user_id}
+                          </span>
+                        )}
+                        {username && (
+                          <span className="text-sm text-gray-600">
+                            @{username}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center space-x-2 text-sm text-gray-500">
+                        <Clock className="h-4 w-4" />
+                        <span>{formatDateTime(log.created_at)}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-gray-500">
-                      <Clock className="h-4 w-4" />
-                      <span>{formatDateTime(log.created_at)}</span>
-                    </div>
+                    
+                    {(first_name || last_name) && (
+                      <div className="text-sm text-gray-700 mb-1">
+                        Имя: {first_name || ''} {last_name || ''}
+                      </div>
+                    )}
+                    
+                    {log.execution_time_ms && (
+                      <div className="text-xs text-gray-500">
+                        Время выполнения: {log.execution_time_ms}мс
+                      </div>
+                    )}
+                    
+                    {log.error_message && (
+                      <div className="text-sm text-red-600 font-medium mt-1">
+                        Ошибка: {log.error_message}
+                      </div>
+                    )}
+                    
+                    {typeof log.details === 'object' && Object.keys(log.details || {}).length > 0 && (
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-sm text-blue-600">
+                          Подробности
+                        </summary>
+                        <pre className="mt-1 text-xs bg-white p-2 rounded border overflow-x-auto">
+                          {JSON.stringify(log.details, null, 2)}
+                        </pre>
+                      </details>
+                    )}
                   </div>
-                  
-                  {log.details?.first_name && (
-                    <div className="text-sm text-gray-700 mb-1">
-                      Имя: {log.details.first_name} {log.details.last_name || ''}
-                    </div>
-                  )}
-                  
-                  {log.execution_time_ms && (
-                    <div className="text-xs text-gray-500">
-                      Время выполнения: {log.execution_time_ms}мс
-                    </div>
-                  )}
-                  
-                  {log.error_message && (
-                    <div className="text-sm text-red-600 font-medium mt-1">
-                      Ошибка: {log.error_message}
-                    </div>
-                  )}
-                  
-                  {Object.keys(log.details || {}).length > 0 && (
-                    <details className="mt-2">
-                      <summary className="cursor-pointer text-sm text-blue-600">
-                        Подробности
-                      </summary>
-                      <pre className="mt-1 text-xs bg-white p-2 rounded border overflow-x-auto">
-                        {JSON.stringify(log.details, null, 2)}
-                      </pre>
-                    </details>
-                  )}
-                </div>
-              ))}
+                );
+              })}
               
               {filteredLogs.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
