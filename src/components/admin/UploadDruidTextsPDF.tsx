@@ -1,13 +1,17 @@
+
 import React, { useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DRUID_SIGNS } from "@/utils/druid-signs";
-import { getDocument, GlobalWorkerOptions } from "pdfjs-dist/build/pdf";
-import pdfjsWorker from "pdfjs-dist/build/pdf.worker?url";
+// Исправленный импорт PDF-js API
+import * as pdfjsLib from "pdfjs-dist";
+// Импорт воркера через url
+import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.js?url";
 
 type ParsedTexts = { [signId: string]: string };
 
-GlobalWorkerOptions.workerSrc = pdfjsWorker;
+// Установка workerSrc — обязательно для корректной работы в браузере
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 export const UploadDruidTextsPDF: React.FC = () => {
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -46,7 +50,7 @@ export const UploadDruidTextsPDF: React.FC = () => {
   async function extractPDFText(file: File): Promise<string> {
     const typedarray = new Uint8Array(await file.arrayBuffer());
     // Получаем pdf-документ через getDocument
-    const pdf = await getDocument({ data: typedarray }).promise as any;
+    const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise as any;
     let fullText = "";
 
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
