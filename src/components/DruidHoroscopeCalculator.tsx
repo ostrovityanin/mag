@@ -105,28 +105,24 @@ export const DruidHoroscopeCalculator: React.FC = () => {
 
   return (
     <div className="w-full min-h-screen py-10 flex justify-center bg-gradient-to-br from-green-50 to-emerald-100">
-      {/* Основной калькулятор */}
+      {/* Шапка: сокращаем и убираем дубль */}
       <div className="w-full max-w-lg px-2 flex flex-col gap-8">
-        <div className="flex flex-col items-center mb-2 animate-fade-in">
+        <header className="flex flex-col items-center mb-2 animate-fade-in">
           <div className="flex items-center gap-2 text-green-800 text-xl sm:text-2xl font-extrabold mb-1 tracking-tight">
             <TreePine className="w-7 h-7 text-green-700 inline-block" />
             <span className="drop-shadow text-3xl font-playfair select-none">
-              Друидские Предсказания
+              Кельтский гороскоп деревьев
             </span>
           </div>
           <p className="text-green-700 mt-2 text-sm font-medium opacity-80 italic">
-            Калькулятор по древнему кельтскому гороскопу деревьев
+            Определите свой знак по дате рождения
           </p>
-        </div>
+        </header>
 
         <Card className="shadow-xl border-2 border-green-200 bg-gradient-to-tl from-white to-green-50/60 backdrop-blur rounded-2xl transition-all">
-          <CardHeader className="bg-green-50/70 rounded-t-2xl p-4 pb-2 border-b border-green-100 flex flex-col items-center">
-            <CardTitle className="flex gap-2 items-center text-green-900 text-xl font-semibold">
-              <Calendar className="w-5 h-5 text-green-600" />
-              <span>Друидский гороскоп-калькулятор</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4 pb-2 px-2 sm:px-6">
+          {/* Внутри карточки убираем основной заголовок, оставляем понятную инструкцию */}
+          {/* <CardHeader /> больше не нужен */}
+          <CardContent className="pt-6 pb-2 px-2 sm:px-6">
             <form
               onSubmit={handleSubmit}
               className="flex flex-col items-center gap-4"
@@ -209,7 +205,6 @@ export const DruidHoroscopeCalculator: React.FC = () => {
                 ) : desc ? (
                   <div
                     className="prose prose-sm sm:prose-base max-w-none text-gray-800 text-left mt-2 animate-fade-in"
-                    // заменяем text-center на text-left
                     dangerouslySetInnerHTML={{ __html: desc }}
                   />
                 ) : (
