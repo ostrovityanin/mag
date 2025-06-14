@@ -1,6 +1,5 @@
 
-import React, { useState } from "react";
-import { Icon } from "lucide-react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import useVKBridge from "@/hooks/useVKBridge";
 
@@ -17,12 +16,21 @@ export const VKMiniAppMain: React.FC = () => {
         <div className="mb-4 text-center text-blue-800 font-semibold">
           Кельтский гороскоп деревьев <span className="text-2xl">🌳</span>
         </div>
+        
+        {/* Отладочная информация */}
+        <div className="mb-4 p-2 bg-gray-100 rounded text-xs text-gray-600 w-full">
+          <div>VK Bridge доступен: {isAvailable ? 'Да' : 'Нет'}</div>
+          <div>User Agent: {navigator.userAgent.substring(0, 50)}...</div>
+          <div>URL: {window.location.href}</div>
+        </div>
+        
         {!isAvailable && (
           <div className="text-red-600 font-medium text-center mb-2">
             Приложение открыто не во ВКонтакте<br />
             Попробуйте открыть его через VK Mini Apps.
           </div>
         )}
+        
         {isAvailable && !user && (
           <Button
             onClick={authorize}
@@ -32,9 +40,11 @@ export const VKMiniAppMain: React.FC = () => {
             {loading ? "Загрузка..." : "Войти через VK"}
           </Button>
         )}
+        
         {error && (
-          <div className="text-red-500 mt-3 text-center">{error}</div>
+          <div className="text-red-500 mt-3 text-center text-sm">{error}</div>
         )}
+        
         {user && (
           <div className="mt-6 w-full text-center animate-fade-in-fast">
             <div className="flex flex-col items-center gap-2">
@@ -57,6 +67,8 @@ export const VKMiniAppMain: React.FC = () => {
           </div>
         )}
       </div>
+      
+      {/* Фоновая декорация */}
       <div className="fixed left-0 right-0 bottom-0 flex justify-center p-2 pointer-events-none select-none opacity-30">
         <span className="text-7xl text-cyan-200">🌿</span>
         <span className="text-8xl text-blue-100 -ml-6">🌳</span>

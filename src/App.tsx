@@ -29,18 +29,22 @@ function App() {
         <Sonner />
         <Router>
           <Routes>
-            {/* Роуты БЕЗ TelegramProvider */}
+            {/* Роуты БЕЗ TelegramProvider - для VK Mini App */}
             <Route path="/" element={<VKMiniAppPage />} />
             <Route path="/vk-mini-app" element={<VKMiniAppPage />} />
             <Route path="/admin" element={<AdminPage />} />
+            
+            {/* Специальный роут для /druid без Telegram Provider */}
+            <Route path="/druid" element={<VKMiniAppPage />} />
+            <Route path="/Druid" element={<VKMiniAppPage />} />
+            
             <Route path="*" element={<NotFound />} />
 
             {/* Роуты, требующие TelegramProvider */}
             <Route element={<TelegramLayout />}>
               <Route path="/telegram" element={<Index />} />
               <Route path="/home" element={<HomePage />} />
-              <Route path="/druid" element={<DruidPage />} />
-              <Route path="/Druid" element={<DruidPage />} />
+              <Route path="/telegram/druid" element={<DruidPage />} />
             </Route>
           </Routes>
         </Router>
