@@ -126,7 +126,7 @@ export const DruidPage: React.FC = () => {
         <div className="text-center p-4">
           <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <p className="text-red-600 mb-4">Ошибка проверки подписок</p>
-          <p className="text-sm text-gray-600 mb-4">{subscriptionCheck.error}</p>
+          <p className="text-sm text-gray-600 mb-4">{subscriptionCheck.error.message || 'Неизвестная ошибка'}</p>
           <Button onClick={() => subscriptionCheck.refetch()} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
             Повторить
