@@ -122,6 +122,27 @@ export type Database = {
         }
         Relationships: []
       }
+      druid_sign_texts: {
+        Row: {
+          id: string
+          sign_id: string
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          sign_id: string
+          text: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          sign_id?: string
+          text?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fortune_requests: {
         Row: {
           created_at: string
