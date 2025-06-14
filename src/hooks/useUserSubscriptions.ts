@@ -25,7 +25,7 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
     refetchOnMount: true,
     refetchOnWindowFocus: false,
     staleTime: 0,
-    cacheTime: 5 * 60 * 1000,  // исправлено: cacheTime вместо некорректного gcTime
+    // cacheTime убран, этот параметр больше не поддерживается/не нужен.
     queryFn: async () => {
       if (!authenticatedUser) {
         throw new Error('Не аутентифицирован');

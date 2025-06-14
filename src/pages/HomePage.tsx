@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { WelcomeScreen } from '@/components/WelcomeScreen';
 import { ChannelRequirement } from '@/components/ChannelRequirement';
@@ -103,11 +102,21 @@ export const HomePage: React.FC = () => {
     );
   }
 
+  // Дефолтные значения, чтобы не было ошибок типов
+  const hasUnsubscribedChannels =
+    subscriptionData && typeof subscriptionData.hasUnsubscribedChannels === 'boolean'
+      ? subscriptionData.hasUnsubscribedChannels
+      : false;
+  const missingChannels =
+    subscriptionData && Array.isArray(subscriptionData.missingChannels)
+      ? subscriptionData.missingChannels
+      : [];
+
   // Если есть неподтвержденные каналы, показываем требования
-  if (subscriptionData?.hasUnsubscribedChannels) {
+  if (hasUnsubscribedChannels) {
     return (
       <ChannelRequirement 
-        channels={channels.filter(c => subscriptionData.missingChannels.some(mc => mc.id === c.id))} 
+        channels={channels.filter(c => missingChannels.some(mc => mc.id === c.id))} 
         subscriptions={{}}
         onCheckSubscription={() => refetch()}
         isChecking={null}

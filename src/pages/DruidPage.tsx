@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useTelegramContext } from '@/components/TelegramProvider';
 import { useUserSubscriptions } from '@/hooks/useUserSubscriptions';
@@ -147,7 +146,13 @@ export const DruidPage: React.FC = () => {
     );
   }
 
-  const { hasUnsubscribedChannels, missingChannels } = data!;
+  // Извлекаем результат с дефолтными значениями, чтобы не получить ошибку типов
+  const hasUnsubscribedChannels =
+    data && typeof data.hasUnsubscribedChannels === 'boolean'
+      ? data.hasUnsubscribedChannels
+      : false;
+  const missingChannels =
+    data && Array.isArray(data.missingChannels) ? data.missingChannels : [];
 
   // 5) Если хотя бы один канал не подписан — показываем UI подписки
   if (hasUnsubscribedChannels) {
