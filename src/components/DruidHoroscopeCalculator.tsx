@@ -208,7 +208,8 @@ export const DruidHoroscopeCalculator: React.FC = () => {
                   </div>
                 ) : desc ? (
                   <div
-                    className="prose prose-sm sm:prose-base max-w-none text-gray-800 text-center mt-2 animate-fade-in"
+                    className="prose prose-sm sm:prose-base max-w-none text-gray-800 text-left mt-2 animate-fade-in"
+                    // заменяем text-center на text-left
                     dangerouslySetInnerHTML={{ __html: desc }}
                   />
                 ) : (
