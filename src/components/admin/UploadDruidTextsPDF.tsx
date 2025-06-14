@@ -1,16 +1,13 @@
-
 import React, { useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DRUID_SIGNS } from "@/utils/druid-signs";
-
-// Импортируем API pdfjs для браузера
-import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
-
-// Жёстко задаём версию PDF.js для CDN-worker
-GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.js";
+import { getDocument, GlobalWorkerOptions } from "pdfjs-dist/build/pdf";
+import pdfjsWorker from "pdfjs-dist/build/pdf.worker?url";
 
 type ParsedTexts = { [signId: string]: string };
+
+GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 export const UploadDruidTextsPDF: React.FC = () => {
   const inputRef = useRef<HTMLInputElement | null>(null);
