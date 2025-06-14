@@ -1,12 +1,14 @@
 
 import React, { useRef, useState } from "react";
-// Убираем import pdfParse!
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DRUID_SIGNS } from "@/utils/druid-signs";
-// Импортируем pdfjsLib из pdfjs-dist
-import * as pdfjsLib from "pdfjs-dist/build/pdf";
-import "pdfjs-dist/build/pdf.worker.entry";
+
+// Импортируем pdfjsLib из legacy для Vite
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
+
+// Устанавливаем путь до pdf.worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 type ParsedTexts = { [signId: string]: string };
 
@@ -16,7 +18,6 @@ export const UploadDruidTextsPDF: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
 
-  // Определяем ключевые слова (можно менять по структуре PDF)
   const druidTitles: { [signId: string]: { name: string } } = DRUID_SIGNS.reduce(
     (acc, sign) => {
       acc[sign.id] = { name: sign.name };
@@ -25,7 +26,6 @@ export const UploadDruidTextsPDF: React.FC = () => {
     {} as { [signId: string]: { name: string } }
   );
 
-  // Разделение по названиям знаков
   function splitBySigns(pdfText: string): ParsedTexts {
     const result: ParsedTexts = {};
     const signNames = DRUID_SIGNS.map((s) => s.name);
@@ -46,7 +46,6 @@ export const UploadDruidTextsPDF: React.FC = () => {
     return result;
   }
 
-  // Асинхронная функция для извлечения текста из PDF-файла в браузере
   async function extractPDFText(file: File): Promise<string> {
     const typedarray = new Uint8Array(await file.arrayBuffer());
     const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
@@ -55,14 +54,12 @@ export const UploadDruidTextsPDF: React.FC = () => {
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
       const page = await pdf.getPage(pageNum);
       const content = await page.getTextContent();
-      // Соединяем все текстовые элементы страницы с пробелом
       const pageText = content.items.map((item: any) => item.str).join(" ");
       fullText += pageText + "\n";
     }
     return fullText;
   }
 
-  // Обработчик файла
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (!e.target.files || !e.target.files[0]) return;
     setLoading(true);
