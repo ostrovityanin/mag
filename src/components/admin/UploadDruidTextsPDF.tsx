@@ -1,9 +1,12 @@
 
 import React, { useRef, useState } from "react";
-import pdfParse from "pdf-parse";
+// Убираем import pdfParse!
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DRUID_SIGNS } from "@/utils/druid-signs";
+// Импортируем pdfjsLib из pdfjs-dist
+import * as pdfjsLib from "pdfjs-dist/build/pdf";
+import "pdfjs-dist/build/pdf.worker.entry";
 
 type ParsedTexts = { [signId: string]: string };
 
@@ -22,21 +25,18 @@ export const UploadDruidTextsPDF: React.FC = () => {
     {} as { [signId: string]: { name: string } }
   );
 
-  // Парсим текст по именам знаков (упрощённо - ищем заголовки)
+  // Разделение по названиям знаков
   function splitBySigns(pdfText: string): ParsedTexts {
     const result: ParsedTexts = {};
-    // Готовим массив шаблонов-для поиска
     const signNames = DRUID_SIGNS.map((s) => s.name);
     const signPattern = new RegExp(
       `(${signNames.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join("|")})`,
       "g"
     );
 
-    // Добавляем спец.~~ЗАМЕНЯЕМ все вхождения имен знаков на маркер-разделитель
     let txt = pdfText.replace(signPattern, "\n@@SIGN@@$1\n");
     let sections = txt.split("\n@@SIGN@@").filter(Boolean);
 
-    // Перебираем секции, первая не принадлежит ни одному знаку - пропускаем
     for (let section of sections) {
       let foundSign = DRUID_SIGNS.find((s) => section.trim().startsWith(s.name));
       if (foundSign) {
@@ -46,6 +46,22 @@ export const UploadDruidTextsPDF: React.FC = () => {
     return result;
   }
 
+  // Асинхронная функция для извлечения текста из PDF-файла в браузере
+  async function extractPDFText(file: File): Promise<string> {
+    const typedarray = new Uint8Array(await file.arrayBuffer());
+    const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
+    let fullText = "";
+
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const content = await page.getTextContent();
+      // Соединяем все текстовые элементы страницы с пробелом
+      const pageText = content.items.map((item: any) => item.str).join(" ");
+      fullText += pageText + "\n";
+    }
+    return fullText;
+  }
+
   // Обработчик файла
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (!e.target.files || !e.target.files[0]) return;
@@ -53,9 +69,8 @@ export const UploadDruidTextsPDF: React.FC = () => {
     setPdfError(null);
     setParsedTexts({});
     try {
-      const arrayBuffer = await e.target.files[0].arrayBuffer();
-      const pdfData = await pdfParse(arrayBuffer);
-      const texts = splitBySigns(pdfData.text);
+      const pdfText = await extractPDFText(e.target.files[0]);
+      const texts = splitBySigns(pdfText);
       setParsedTexts(texts);
       if (Object.keys(texts).length === 0) {
         setPdfError("Не удалось распознать знаки в PDF — проверьте структуру файла.");
