@@ -5,11 +5,10 @@ import { ChannelManagement } from '@/components/admin/ChannelManagement';
 import { SystemLogs } from '@/components/admin/SystemLogs';
 import { UserLoginHistory } from '@/components/admin/UserLoginHistory';
 import { LogsViewer } from '@/components/admin/LogsViewer';
-import { ConsoleLogs } from '@/components/admin/ConsoleLogs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, Users, BarChart3, Shield, FileText, UserCheck, Activity, Terminal } from 'lucide-react';
+import { Settings, Users, BarChart3, Shield, FileText, UserCheck, Activity } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { SubscriptionCheckLogs } from '@/components/admin/SubscriptionCheckLogs';
 import { AdminDruidSigns } from "@/components/admin/AdminDruidSigns";
@@ -118,7 +117,7 @@ export const AdminPage: React.FC = () => {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-8 bg-white">
+          <TabsList className="grid w-full grid-cols-7 bg-white">
             <TabsTrigger value="channels" className="flex items-center space-x-2">
               <Settings className="h-4 w-4" />
               <span>Каналы</span>
@@ -134,10 +133,6 @@ export const AdminPage: React.FC = () => {
             <TabsTrigger value="monitoring" className="flex items-center space-x-2">
               <Activity className="h-4 w-4" />
               <span>Мониторинг</span>
-            </TabsTrigger>
-            <TabsTrigger value="console-logs" className="flex items-center space-x-2">
-              <Terminal className="h-4 w-4" />
-              <span>Консоль</span>
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center space-x-2">
               <Shield className="h-4 w-4" />
@@ -165,10 +160,6 @@ export const AdminPage: React.FC = () => {
 
           <TabsContent value="monitoring">
             <LogsViewer />
-          </TabsContent>
-
-          <TabsContent value="console-logs">
-            <ConsoleLogs />
           </TabsContent>
 
           <TabsContent value="settings">

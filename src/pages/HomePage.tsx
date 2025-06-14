@@ -11,7 +11,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { AlertCircle, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SimpleTelegramAuth from '@/components/SimpleTelegramAuth';
-import { Link } from "react-router-dom";
 
 export const HomePage: React.FC = () => {
   const { 
@@ -145,18 +144,7 @@ export const HomePage: React.FC = () => {
             Powered by Telegram WebApp • Версия 2.0
           </p>
         </div>
-
-        <div className="mt-8 flex justify-center">
-          <Link
-            to="/vk-mini-app"
-            className="px-6 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 shadow font-semibold text-blue-800"
-          >
-            VK Mini App: Кельтский гороскоп
-          </Link>
-        </div>
       </div>
     </div>
   );
 };
-
-export default HomePage;
