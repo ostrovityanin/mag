@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useTelegramContext } from '@/components/TelegramProvider';
 import { useUserSubscriptions } from '@/hooks/useUserSubscriptions';
@@ -12,6 +11,7 @@ import { FortuneCard } from '@/components/FortuneCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import { DruidHoroscopeCalculator } from "@/components/DruidHoroscopeCalculator";
 
 export const DruidPage: React.FC = () => {
   const { toast } = useToast();
@@ -276,6 +276,10 @@ export const DruidPage: React.FC = () => {
           </div>
 
           <div className="space-y-6">
+            {/* НОВЫЙ ДРУИД-КАЛЬКУЛЯТОР */}
+            <DruidHoroscopeCalculator />
+
+            {/* Остальной контент — Tabs, гороскоп и др. */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
               <TabsList className="grid w-full grid-cols-2 bg-white shadow-sm">
                 <TabsTrigger value="horoscope" className="flex items-center space-x-2">
