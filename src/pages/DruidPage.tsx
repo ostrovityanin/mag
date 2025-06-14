@@ -12,11 +12,37 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { DruidHoroscopeCalculator } from "@/components/DruidHoroscopeCalculator";
+import { useLocation } from "react-router-dom";
 
 export const DruidPage: React.FC = () => {
+  // Хак для "демо" — определяем, включён ли демо-режим по query-параметру ?demo=1
+  const [isDemo, setIsDemo] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      setIsDemo(params.get("demo") === "1");
+    }
+  }, []);
+
   const { toast } = useToast();
   const { isAuthenticated, authenticatedUser } = useTelegramContext();
   const subscriptionCheck = useUserSubscriptions('druid');
+
+  // Демо данные (никогда не используются для настоящих пользователей!)
+  const DEMO_USER = { first_name: "Демо", last_name: "Пользователь", username: "demo_user" };
+  const DEMO_SUBSCRIPTION = {
+    isLoading: false,
+    error: null,
+    data: { hasUnsubscribedChannels: false, missingChannels: [], debugInfo: {} },
+    isFetching: false,
+    refetch: () => {},
+  };
+
+  // Дальше всё стандартно, но если isDemo=true, используем "фейковые" данные
+  const currentIsAuthenticated = isDemo ? true : isAuthenticated;
+  const currentAuthenticatedUser = isDemo ? DEMO_USER : authenticatedUser;
+  const currentSubscriptionCheck = isDemo ? DEMO_SUBSCRIPTION : subscriptionCheck;
 
   const [selectedSign, setSelectedSign] = React.useState<string | null>(null);
   const [activeTab, setActiveTab] = React.useState('horoscope');
@@ -92,11 +118,11 @@ export const DruidPage: React.FC = () => {
     }
   };
 
-  if (!isAuthenticated) {
+  if (!currentIsAuthenticated) {
     return <SimpleTelegramAuth />;
   }
 
-  if (subscriptionCheck.isLoading) {
+  if (currentSubscriptionCheck.isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center">
         <div className="text-center">
@@ -107,30 +133,30 @@ export const DruidPage: React.FC = () => {
     );
   }
 
-  if (subscriptionCheck.error) {
+  if (currentSubscriptionCheck.error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center">
         <div className="text-center p-4 w-full max-w-2xl">
           <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <p className="text-red-600 mb-4">Ошибка проверки подписок</p>
-          <p className="text-sm text-gray-600 mb-4">{subscriptionCheck.error.message || 'Неизвестная ошибка'}</p>
-          <Button onClick={() => subscriptionCheck.refetch()} variant="outline">
+          <p className="text-sm text-gray-600 mb-4">{currentSubscriptionCheck.error.message || 'Неизвестная ошибка'}</p>
+          <Button onClick={() => currentSubscriptionCheck.refetch()} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
             Повторить
           </Button>
           {/* Не просим копировать debugInfo, просто отображаем блок */}
           <div className="mt-6 text-left bg-red-50 border border-red-200 rounded p-4 text-xs max-h-72 overflow-auto">
             <div className="mb-2 font-semibold">DebugInfo:</div>
-            <pre className="whitespace-pre-wrap">{JSON.stringify(subscriptionCheck.data?.debugInfo, null, 2)}</pre>
+            <pre className="whitespace-pre-wrap">{JSON.stringify(currentSubscriptionCheck.data?.debugInfo, null, 2)}</pre>
           </div>
         </div>
       </div>
     );
   }
 
-  const hasUnsubscribedChannels = subscriptionCheck.data?.hasUnsubscribedChannels || false;
-  const missingChannels = subscriptionCheck.data?.missingChannels || [];
-  const debugInfo = subscriptionCheck.data?.debugInfo;
+  const hasUnsubscribedChannels = currentSubscriptionCheck.data?.hasUnsubscribedChannels || false;
+  const missingChannels = currentSubscriptionCheck.data?.missingChannels || [];
+  const debugInfo = currentSubscriptionCheck.data?.debugInfo;
 
   if (hasUnsubscribedChannels) {
     return (
@@ -143,7 +169,6 @@ export const DruidPage: React.FC = () => {
             </h1>
           </div>
         </div>
-
         <Card className="max-w-md border-yellow-200 mb-4">
           <CardHeader className="text-center">
             <CardTitle className="flex items-center justify-center space-x-2 text-yellow-700">
@@ -154,7 +179,7 @@ export const DruidPage: React.FC = () => {
           <CardContent className="space-y-4">
             <div>
               <p className="text-lg font-medium">
-                Привет, {authenticatedUser?.first_name}!
+                Привет, {currentAuthenticatedUser?.first_name}!
               </p>
               <p className="text-sm text-gray-600 mt-2">
                 Для доступа подпишитесь на каналы:
@@ -184,12 +209,12 @@ export const DruidPage: React.FC = () => {
                 Уже подписались? Проверьте еще раз:
               </p>
               <Button
-                onClick={() => subscriptionCheck.refetch()}
-                disabled={subscriptionCheck.isFetching}
+                onClick={() => currentSubscriptionCheck.refetch()}
+                disabled={currentSubscriptionCheck.isFetching}
                 size="lg"
                 className="w-full"
               >
-                {subscriptionCheck.isFetching ? (
+                {currentSubscriptionCheck.isFetching ? (
                   <>
                     <LoadingSpinner size="sm" className="mr-2" />
                     Проверяем...
@@ -271,7 +296,7 @@ export const DruidPage: React.FC = () => {
               </h1>
             </div>
             <p className="text-gray-600">
-              Добро пожаловать, {authenticatedUser?.first_name}! 🌿
+              Добро пожаловать, {currentAuthenticatedUser?.first_name}! 🌿
             </p>
           </div>
 
