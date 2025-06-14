@@ -114,7 +114,7 @@ export const AdminPage: React.FC = () => {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 bg-white">
+          <TabsList className="grid w-full grid-cols-6 bg-white">
             <TabsTrigger value="channels" className="flex items-center space-x-2">
               <Settings className="h-4 w-4" />
               <span>Каналы</span>
