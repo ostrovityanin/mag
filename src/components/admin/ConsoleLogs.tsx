@@ -62,8 +62,8 @@ export const ConsoleLogs: React.FC = () => {
         // Добавляем в наш список логов
         setLogs(prevLogs => {
           const newLogs = [logEntry, ...prevLogs];
-          // Ограничиваем количество логов до 500
-          return newLogs.slice(0, 500);
+          // Ограничиваем количество логов до 1000
+          return newLogs.slice(0, 1000);
         });
       };
     };
@@ -84,6 +84,81 @@ export const ConsoleLogs: React.FC = () => {
       console.debug = originalConsole.debug;
     };
   }, [isCapturing]);
+
+  // Добавляем детальную диагностику VK окружения при загрузке
+  useEffect(() => {
+    console.log("=== ДЕТАЛЬНАЯ VK ДИАГНОСТИКА ===");
+    console.log("User Agent:", navigator.userAgent);
+    console.log("URL:", window.location.href);
+    console.log("Referer:", document.referrer);
+    console.log("window.vkBridge:", !!window.vkBridge);
+    console.log("window.VKWebAppInit:", !!window.VKWebAppInit);
+    console.log("All window VK properties:", Object.keys(window).filter(key => key.toLowerCase().includes('vk')));
+    
+    // Проверяем все возможные VK объекты
+    const vkChecks = {
+      'window.vkBridge': window.vkBridge,
+      'window.VKWebAppInit': window.VKWebAppInit,
+      'window.VKWebAppGetUserInfo': window.VKWebAppGetUserInfo,
+      'window.VK': (window as any).VK,
+      'window.VKWebApp': (window as any).VKWebApp,
+      'window.parent.vkBridge': window.parent?.vkBridge,
+      'window.top.vkBridge': window.top?.vkBridge,
+    };
+    
+    console.log("VK Objects check:", vkChecks);
+    
+    // Проверяем URL параметры
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const vkUrlParams = {};
+    const vkHashParams = {};
+    
+    for (const [key, value] of urlParams.entries()) {
+      if (key.startsWith('vk_')) {
+        vkUrlParams[key] = value;
+      }
+    }
+    
+    for (const [key, value] of hashParams.entries()) {
+      if (key.startsWith('vk_')) {
+        vkHashParams[key] = value;
+      }
+    }
+    
+    console.log("VK URL params:", vkUrlParams);
+    console.log("VK Hash params:", vkHashParams);
+    
+    // Проверяем заголовки и метаданные
+    console.log("Document title:", document.title);
+    console.log("Document domain:", document.domain);
+    console.log("Document.referrer:", document.referrer);
+    
+    // Проверяем iframe контекст
+    console.log("In iframe:", window !== window.top);
+    console.log("Parent exists:", !!window.parent);
+    console.log("Top exists:", !!window.top);
+    
+    try {
+      console.log("Parent location accessible:", window.parent.location.href);
+    } catch (e) {
+      console.log("Parent location access denied:", e.message);
+    }
+    
+    // Проверяем PostMessage API
+    console.log("PostMessage available:", typeof window.postMessage === 'function');
+    
+    // Слушаем сообщения от родительского окна
+    const messageListener = (event) => {
+      console.log("Received message from parent:", event);
+    };
+    
+    window.addEventListener('message', messageListener);
+    
+    return () => {
+      window.removeEventListener('message', messageListener);
+    };
+  }, []);
 
   const clearLogs = () => {
     setLogs([]);
@@ -130,7 +205,7 @@ export const ConsoleLogs: React.FC = () => {
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Terminal className="h-5 w-5" />
-            <span>Консольные логи</span>
+            <span>Консольные логи (расширенная диагностика VK)</span>
             <Badge variant={isCapturing ? 'default' : 'secondary'}>
               {isCapturing ? 'Захват включен' : 'Захват отключен'}
             </Badge>
@@ -161,6 +236,7 @@ export const ConsoleLogs: React.FC = () => {
             <span>Всего логов: {logs.length}</span>
             <span>Ошибок: {logs.filter(l => l.level === 'error').length}</span>
             <span>Предупреждений: {logs.filter(l => l.level === 'warn').length}</span>
+            <span>VK логов: {logs.filter(l => l.message.toLowerCase().includes('vk')).length}</span>
           </div>
         </div>
 
@@ -169,12 +245,17 @@ export const ConsoleLogs: React.FC = () => {
             {logs.map((log) => (
               <div 
                 key={log.id} 
-                className="border rounded-lg p-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+                className={`border rounded-lg p-3 hover:bg-gray-100 transition-colors ${
+                  log.message.toLowerCase().includes('vk') ? 'bg-blue-50 border-blue-200' : 'bg-gray-50'
+                }`}
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center space-x-2">
                     {getLevelIcon(log.level)}
                     {getLevelBadge(log.level)}
+                    {log.message.toLowerCase().includes('vk') && (
+                      <Badge variant="default" className="bg-blue-600">VK</Badge>
+                    )}
                   </div>
                   <div className="text-xs text-gray-500">
                     {format(log.timestamp, 'HH:mm:ss.SSS dd.MM', { locale: ru })}

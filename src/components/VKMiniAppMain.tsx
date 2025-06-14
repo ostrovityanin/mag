@@ -5,38 +5,127 @@ import useVKBridge from "@/hooks/useVKBridge";
 
 export const VKMiniAppMain: React.FC = () => {
   const [mounted, setMounted] = useState(false);
-  const [basicInfo, setBasicInfo] = useState<{
-    userAgent: string;
-    url: string;
-    timestamp: string;
-  } | null>(null);
+  const [detectionResults, setDetectionResults] = useState<any>(null);
 
-  // Добавляем состояние для отслеживания монтирования компонента
+  // Максимально детальная диагностика VK окружения
   useEffect(() => {
-    console.log("VKMiniAppMain component mounted");
+    console.log("=== VK MINI APP MAIN MOUNTED ===");
     setMounted(true);
     
-    if (typeof window !== "undefined") {
-      setBasicInfo({
-        userAgent: navigator.userAgent,
-        url: window.location.href,
-        timestamp: new Date().toISOString()
-      });
-      console.log("Basic info collected:", {
-        userAgent: navigator.userAgent,
-        url: window.location.href,
-        timestamp: new Date().toISOString()
-      });
+    // Немедленная проверка всех VK объектов
+    const vkDetection = {
+      timestamp: new Date().toISOString(),
+      url: window.location.href,
+      userAgent: navigator.userAgent,
+      referrer: document.referrer,
+      
+      // Проверка VK объектов
+      windowVKBridge: {
+        exists: !!window.vkBridge,
+        type: typeof window.vkBridge,
+        methods: window.vkBridge ? Object.keys(window.vkBridge) : [],
+      },
+      
+      windowVKWebAppInit: {
+        exists: !!window.VKWebAppInit,
+        type: typeof window.VKWebAppInit,
+      },
+      
+      // Поиск всех VK свойств в window
+      allVKProperties: Object.keys(window).filter(key => 
+        key.toLowerCase().includes('vk')
+      ),
+      
+      // Проверка iframe контекста
+      iframeContext: {
+        isInIframe: window !== window.top,
+        hasParent: !!window.parent,
+        hasTop: !!window.top,
+      },
+      
+      // URL параметры
+      urlParams: new URLSearchParams(window.location.search),
+      hashParams: new URLSearchParams(window.location.hash.slice(1)),
+      
+      // Проверка User Agent на VK подписи
+      userAgentChecks: {
+        hasVKMA: /VKMA/.test(navigator.userAgent),
+        hasVKApp: /VKApp/.test(navigator.userAgent),
+        hasVK: /VK\//.test(navigator.userAgent),
+        hasMobile: /Mobile/.test(navigator.userAgent),
+      }
+    };
+    
+    console.log("ПОЛНАЯ VK ДИАГНОСТИКА:", vkDetection);
+    setDetectionResults(vkDetection);
+    
+    // Проверка доступа к родительскому окну
+    try {
+      console.log("Parent window location:", window.parent.location.href);
+    } catch (e) {
+      console.log("Parent window access denied:", e.message);
     }
-
+    
+    // Попытка обращения к VK Bridge через разные пути
+    const bridgePaths = [
+      () => window.vkBridge,
+      () => (window as any).VKWebApp,
+      () => (window as any).VK,
+      () => window.parent?.vkBridge,
+      () => window.top?.vkBridge,
+    ];
+    
+    bridgePaths.forEach((pathFn, index) => {
+      try {
+        const result = pathFn();
+        console.log(`VK Bridge path ${index}:`, result);
+      } catch (e) {
+        console.log(`VK Bridge path ${index} error:`, e.message);
+      }
+    });
+    
+    // Слушаем все сообщения
+    const messageHandler = (event: MessageEvent) => {
+      console.log("RECEIVED MESSAGE:", {
+        origin: event.origin,
+        data: event.data,
+        source: event.source,
+        timestamp: new Date().toISOString()
+      });
+    };
+    
+    window.addEventListener('message', messageHandler);
+    
+    // Отправляем тестовое сообщение родителю
+    try {
+      window.parent.postMessage({
+        type: 'vk_test_message',
+        data: 'Hello from VK Mini App'
+      }, '*');
+      console.log("Test message sent to parent");
+    } catch (e) {
+      console.log("Failed to send test message:", e.message);
+    }
+    
     return () => {
-      console.log("VKMiniAppMain component unmounted");
+      window.removeEventListener('message', messageHandler);
+      console.log("VK Mini App Main unmounted");
     };
   }, []);
 
   const { isAvailable, user, error, authorize, loading, diagnostics } = useVKBridge();
 
-  // Базовый тест рендеринга
+  // Логируем изменения состояния VK Bridge
+  useEffect(() => {
+    console.log("VK BRIDGE STATE CHANGE:", {
+      isAvailable,
+      hasUser: !!user,
+      hasError: !!error,
+      isLoading: loading,
+      timestamp: new Date().toISOString()
+    });
+  }, [isAvailable, user, error, loading]);
+
   if (!mounted) {
     return (
       <div style={{ 
@@ -46,7 +135,7 @@ export const VKMiniAppMain: React.FC = () => {
         padding: '20px',
         fontSize: '18px' 
       }}>
-        LOADING...
+        LOADING VK MINI APP...
       </div>
     );
   }
@@ -57,7 +146,7 @@ export const VKMiniAppMain: React.FC = () => {
       background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
       padding: '16px'
     }}>
-      {/* Индикатор что приложение работает */}
+      {/* Статус индикатор */}
       <div style={{
         position: 'fixed',
         top: '10px',
@@ -69,7 +158,7 @@ export const VKMiniAppMain: React.FC = () => {
         fontSize: '12px',
         zIndex: 1000
       }}>
-        ✅ APP LOADED
+        ✅ VK APP LOADED - {new Date().toLocaleTimeString()}
       </div>
 
       <div style={{
@@ -93,30 +182,52 @@ export const VKMiniAppMain: React.FC = () => {
         }}>
           <div style={{ fontSize: '32px', marginBottom: '8px' }}>🌿</div>
           <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0' }}>
-            VK Mini App
+            VK Mini App (Debug Mode)
           </h1>
           <p style={{ fontSize: '14px', margin: '8px 0 0 0', opacity: 0.9 }}>
             Кельтский гороскоп деревьев 🌳
           </p>
         </div>
 
-        {/* Базовая информация */}
-        <div style={{
-          background: '#f3f4f6',
-          padding: '16px',
-          borderRadius: '8px',
-          marginBottom: '16px',
-          fontSize: '14px'
-        }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Базовая диагностика:</div>
-          {basicInfo && (
-            <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
-              <div><strong>Время:</strong> {basicInfo.timestamp}</div>
-              <div><strong>URL:</strong> {basicInfo.url}</div>
-              <div><strong>User Agent:</strong> {basicInfo.userAgent.substring(0, 100)}...</div>
+        {/* Детальная диагностика */}
+        {detectionResults && (
+          <div style={{
+            background: '#f3f4f6',
+            padding: '16px',
+            borderRadius: '8px',
+            marginBottom: '16px',
+            fontSize: '12px'
+          }}>
+            <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#1f2937' }}>
+              🔍 Детальная VK диагностика:
             </div>
-          )}
-        </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <div>
+                <strong>VK Bridge:</strong> {detectionResults.windowVKBridge.exists ? '✅' : '❌'}
+              </div>
+              <div>
+                <strong>VK Init:</strong> {detectionResults.windowVKWebAppInit.exists ? '✅' : '❌'}
+              </div>
+              <div>
+                <strong>В iframe:</strong> {detectionResults.iframeContext.isInIframe ? '✅' : '❌'}
+              </div>
+              <div>
+                <strong>VKMA UA:</strong> {detectionResults.userAgentChecks.hasVKMA ? '✅' : '❌'}
+              </div>
+              <div>
+                <strong>VKApp UA:</strong> {detectionResults.userAgentChecks.hasVKApp ? '✅' : '❌'}
+              </div>
+              <div>
+                <strong>VK Props:</strong> {detectionResults.allVKProperties.length}
+              </div>
+            </div>
+            <div style={{ marginTop: '8px', fontSize: '10px', color: '#6b7280' }}>
+              <div><strong>URL:</strong> {detectionResults.url}</div>
+              <div><strong>Referrer:</strong> {detectionResults.referrer || 'нет'}</div>
+              <div><strong>UserAgent:</strong> {detectionResults.userAgent.substring(0, 100)}...</div>
+            </div>
+          </div>
+        )}
 
         {/* VK Bridge статус */}
         <div style={{
@@ -127,14 +238,14 @@ export const VKMiniAppMain: React.FC = () => {
           marginBottom: '16px'
         }}>
           <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
-            Статус VK Bridge: {isAvailable ? '✅ Доступен' : '❌ Недоступен'}
+            VK Bridge статус: {isAvailable ? '✅ ДОСТУПЕН' : '❌ НЕДОСТУПЕН'}
           </div>
           {diagnostics && (
             <div style={{ fontSize: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
-              <div>VK Bridge: {diagnostics.hasVKBridge ? '✅' : '❌'}</div>
-              <div>Legacy VK: {diagnostics.hasLegacyVK ? '✅' : '❌'}</div>
-              <div>VK User Agent: {diagnostics.isVKUserAgent ? '✅' : '❌'}</div>
-              <div>VK Params: {diagnostics.hasVKParams ? '✅' : '❌'}</div>
+              <div>Bridge: {diagnostics.hasVKBridge ? '✅' : '❌'}</div>
+              <div>Legacy: {diagnostics.hasLegacyVK ? '✅' : '❌'}</div>
+              <div>UserAgent: {diagnostics.isVKUserAgent ? '✅' : '❌'}</div>
+              <div>Params: {diagnostics.hasVKParams ? '✅' : '❌'}</div>
             </div>
           )}
         </div>
@@ -151,10 +262,11 @@ export const VKMiniAppMain: React.FC = () => {
           }}>
             <div style={{ fontSize: '18px', marginBottom: '8px' }}>⚠️</div>
             <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
-              Приложение открыто не во ВКонтакте
+              VK Bridge не обнаружен
             </div>
             <div style={{ fontSize: '14px' }}>
-              Для корректной работы откройте приложение через VK Mini Apps.
+              Все проверки показывают отсутствие VK окружения.
+              Проверьте логи в админ-панели для подробностей.
             </div>
           </div>
         )}
@@ -168,9 +280,9 @@ export const VKMiniAppMain: React.FC = () => {
               borderRadius: '8px',
               marginBottom: '16px'
             }}>
-              <div style={{ color: '#15803d', fontWeight: 'bold' }}>✓ VK Bridge доступен</div>
+              <div style={{ color: '#15803d', fontWeight: 'bold' }}>✓ VK Bridge обнаружен</div>
               <div style={{ fontSize: '14px', color: '#16a34a', marginTop: '4px' }}>
-                Нажмите кнопку для входа
+                Нажмите для авторизации
               </div>
             </div>
             <Button
@@ -178,7 +290,7 @@ export const VKMiniAppMain: React.FC = () => {
               className="w-full text-white font-bold shadow bg-blue-700 hover:bg-blue-800 rounded-xl py-3"
               disabled={loading}
             >
-              {loading ? "Загрузка..." : "Войти через VK"}
+              {loading ? "Авторизация..." : "Войти через VK"}
             </Button>
           </div>
         )}
@@ -192,7 +304,7 @@ export const VKMiniAppMain: React.FC = () => {
             marginTop: '16px',
             fontSize: '14px'
           }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Ошибка:</div>
+            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Ошибка VK:</div>
             <div>{error}</div>
           </div>
         )}
@@ -207,7 +319,7 @@ export const VKMiniAppMain: React.FC = () => {
               marginBottom: '16px'
             }}>
               <div style={{ color: '#15803d', fontWeight: 'bold', marginBottom: '8px' }}>
-                ✓ Успешный вход
+                ✓ Успешная авторизация VK
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
                 {user.photo_200 && (
@@ -227,83 +339,24 @@ export const VKMiniAppMain: React.FC = () => {
                     {user.first_name} {user.last_name}
                   </div>
                   <div style={{ fontSize: '14px', color: '#3b82f6' }}>
-                    ID: {user.id}
+                    VK ID: {user.id}
                   </div>
                 </div>
               </div>
-            </div>
-            <div style={{ color: '#374151', fontSize: '14px' }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-                Добро пожаловать в VK Mini App!
-              </div>
-              <div>Кельтский гороскоп деревьев готов к использованию.</div>
             </div>
           </div>
         )}
 
-        {/* Детальная диагностика */}
-        {diagnostics && (
-          <details style={{ 
-            width: '100%', 
-            marginTop: '16px',
-            border: '1px solid #d1d5db',
-            borderRadius: '8px'
-          }}>
-            <summary style={{
-              cursor: 'pointer',
-              padding: '12px',
-              background: '#f9fafb',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              borderRadius: '8px 8px 0 0'
-            }}>
-              Детальная диагностика (для отладки)
-            </summary>
-            <div style={{ 
-              padding: '12px',
-              background: '#f9fafb',
-              fontSize: '12px',
-              fontFamily: 'monospace',
-              borderRadius: '0 0 8px 8px'
-            }}>
-              <div style={{ marginBottom: '8px' }}>
-                <strong>URL:</strong><br/>
-                <div style={{ background: 'white', padding: '4px', borderRadius: '4px', wordBreak: 'break-all' }}>
-                  {diagnostics.url}
-                </div>
-              </div>
-              {diagnostics.vkBridgeMethods.length > 0 && (
-                <div style={{ marginBottom: '8px' }}>
-                  <strong>VK методы:</strong><br/>
-                  <div style={{ background: 'white', padding: '4px', borderRadius: '4px' }}>
-                    {diagnostics.vkBridgeMethods.join(', ')}
-                  </div>
-                </div>
-              )}
-              {diagnostics.errors.length > 0 && (
-                <div>
-                  <strong style={{ color: '#dc2626' }}>Ошибки:</strong><br/>
-                  <div style={{ background: '#fef2f2', padding: '4px', borderRadius: '4px', border: '1px solid #dc2626' }}>
-                    {diagnostics.errors.map((err, i) => (
-                      <div key={i}>{err}</div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </details>
-        )}
-      </div>
-      
-      {/* Индикатор в углу */}
-      <div style={{
-        position: 'fixed',
-        bottom: '10px',
-        right: '10px',
-        fontSize: '32px',
-        opacity: 0.3
-      }}>
-        🌿🌳🍀
+        {/* Кнопка для принудительного обновления диагностики */}
+        <div style={{ textAlign: 'center', marginTop: '16px' }}>
+          <Button
+            onClick={() => window.location.reload()}
+            variant="outline"
+            size="sm"
+          >
+            🔄 Перезагрузить диагностику
+          </Button>
+        </div>
       </div>
     </div>
   );

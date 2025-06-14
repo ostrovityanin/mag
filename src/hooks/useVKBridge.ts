@@ -20,26 +20,58 @@ declare global {
   }
 }
 
-// Проверка на доступность VK Bridge
+// Максимально детальная проверка VK окружения
 const isVKBridgeAvailable = (): boolean => {
-  if (typeof window === "undefined") return false;
+  console.log("=== ПРОВЕРКА VK BRIDGE ДОСТУПНОСТИ ===");
   
-  // Проверяем различные способы определения VK среды
-  const hasVKBridge = !!(window.vkBridge);
-  const hasLegacyVK = !!(window.VKWebAppInit);
-  const isVKUserAgent = /VKMA/.test(navigator.userAgent) || /VKApp/.test(navigator.userAgent);
-  const hasVKParams = window.location.search.includes('vk_') || window.location.hash.includes('vk_');
+  if (typeof window === "undefined") {
+    console.log("❌ Window объект недоступен (SSR)");
+    return false;
+  }
   
-  console.log('VK Environment check:', {
-    hasVKBridge,
-    hasLegacyVK,
-    isVKUserAgent,
-    hasVKParams,
-    userAgent: navigator.userAgent,
-    location: window.location.href
-  });
+  // Все возможные проверки VK окружения
+  const checks = {
+    hasVKBridge: !!(window.vkBridge),
+    hasLegacyVK: !!(window.VKWebAppInit),
+    hasVKWebApp: !!((window as any).VKWebApp),
+    hasVKObject: !!((window as any).VK),
+    
+    // User Agent проверки
+    isVKMAUserAgent: /VKMA/.test(navigator.userAgent),
+    isVKAppUserAgent: /VKApp/.test(navigator.userAgent),
+    isVKUserAgent: /VK\//.test(navigator.userAgent),
+    isMobileUserAgent: /Mobile/.test(navigator.userAgent),
+    
+    // URL проверки
+    hasVKParams: window.location.search.includes('vk_') || window.location.hash.includes('vk_'),
+    
+    // Iframe проверки
+    isInIframe: window !== window.top,
+    hasParent: !!window.parent,
+    
+    // Referrer проверки
+    hasVKReferrer: document.referrer.includes('vk.com') || document.referrer.includes('vk.me'),
+  };
   
-  return hasVKBridge || hasLegacyVK || isVKUserAgent;
+  console.log("VK окружение - детальные проверки:", checks);
+  
+  // Логируем все VK-связанные свойства в window
+  const vkProperties = Object.keys(window).filter(key => 
+    key.toLowerCase().includes('vk')
+  );
+  console.log("VK свойства в window:", vkProperties);
+  
+  // Проверяем URL и referrer
+  console.log("URL полный:", window.location.href);
+  console.log("Referrer:", document.referrer);
+  console.log("User Agent полный:", navigator.userAgent);
+  
+  // Результат проверки
+  const isAvailable = checks.hasVKBridge || checks.hasLegacyVK || checks.isVKMAUserAgent || checks.isVKAppUserAgent;
+  
+  console.log(`VK Bridge доступность: ${isAvailable ? '✅ ДОСТУПЕН' : '❌ НЕДОСТУПЕН'}`);
+  
+  return isAvailable;
 };
 
 interface VKUser {
@@ -68,6 +100,8 @@ function useVKBridge() {
   const [diagnostics, setDiagnostics] = useState<VKDiagnostics | null>(null);
 
   const getDiagnostics = useCallback((): VKDiagnostics => {
+    console.log("=== СБОР ДИАГНОСТИКИ VK ===");
+    
     const userAgent = navigator.userAgent;
     const url = window.location.href;
     const hasVKBridge = !!(window.vkBridge);
@@ -80,17 +114,19 @@ function useVKBridge() {
     
     if (hasVKBridge && window.vkBridge) {
       try {
-        // Проверяем доступные методы
         const commonMethods = ['VKWebAppInit', 'VKWebAppGetUserInfo', 'VKWebAppSetViewSettings'];
         vkBridgeMethods = commonMethods.filter(method => 
           window.vkBridge?.supports ? window.vkBridge.supports(method) : true
         );
+        console.log("VK Bridge методы:", vkBridgeMethods);
       } catch (e) {
-        errors.push(`VK Bridge methods check failed: ${e}`);
+        const errorMsg = `VK Bridge methods check failed: ${e}`;
+        errors.push(errorMsg);
+        console.error(errorMsg);
       }
     }
     
-    return {
+    const diagnostics = {
       userAgent,
       url,
       hasVKBridge,
@@ -100,45 +136,50 @@ function useVKBridge() {
       vkBridgeMethods,
       errors
     };
+    
+    console.log("Полная диагностика VK:", diagnostics);
+    return diagnostics;
   }, []);
 
   const authorize = useCallback(() => {
+    console.log("=== НАЧАЛО АВТОРИЗАЦИИ VK ===");
     setError(null);
     setLoading(true);
     
-    console.log('VK Bridge authorization attempt...');
     const diag = getDiagnostics();
     setDiagnostics(diag);
     
     if (!isVKBridgeAvailable()) {
+      const errorMsg = "VK Bridge недоступен в текущем окружении";
       setIsAvailable(false);
       setLoading(false);
-      setError("VK Bridge недоступен. Откройте приложение во ВКонтакте.");
-      console.error('VK Bridge not available', diag);
+      setError(errorMsg);
+      console.error("❌", errorMsg);
       return;
     }
 
     try {
       // Попробуем использовать vkBridge API
       if (window.vkBridge) {
-        console.log('Using vkBridge API');
+        console.log("🔄 Используем vkBridge API");
         
-        // Инициализация VK Bridge
+        console.log("1. Инициализация VK Bridge...");
         window.vkBridge.send('VKWebAppInit')
           .then(() => {
-            console.log('VK Bridge initialized successfully');
-            // Устанавливаем настройки приложения
+            console.log("✅ VK Bridge инициализирован");
+            console.log("2. Настройка внешнего вида...");
             return window.vkBridge!.send('VKWebAppSetViewSettings', {
               status_bar_style: 'light',
               action_bar_color: '#f0f9ff'
             });
           })
           .then(() => {
-            console.log('VK Bridge view settings applied');
+            console.log("✅ Настройки внешнего вида применены");
+            console.log("3. Получение информации о пользователе...");
             return window.vkBridge!.send('VKWebAppGetUserInfo');
           })
           .then((userInfo: any) => {
-            console.log('VK User info received:', userInfo);
+            console.log("✅ Информация о пользователе получена:", userInfo);
             setUser({
               id: userInfo.id,
               first_name: userInfo.first_name,
@@ -148,20 +189,21 @@ function useVKBridge() {
             setLoading(false);
           })
           .catch((err: any) => {
-            console.error('VK Bridge error:', err);
-            setError("Ошибка получения данных пользователя: " + (err.error_data?.error_reason || JSON.stringify(err)));
+            console.error("❌ Ошибка VK Bridge:", err);
+            setError("Ошибка VK Bridge: " + (err.error_data?.error_reason || JSON.stringify(err)));
             setLoading(false);
           });
       } 
       // Fallback на старый API
       else if (window.VKWebAppInit && window.VKWebAppGetUserInfo) {
-        console.log('Using legacy VK API');
+        console.log("🔄 Используем legacy VK API");
         window.VKWebAppInit();
         
         setTimeout(() => {
+          console.log("Получение информации пользователя (legacy)...");
           window.VKWebAppGetUserInfo!()
             .then((userInfo: any) => {
-              console.log('VK User info received (legacy):', userInfo);
+              console.log("✅ Информация о пользователе получена (legacy):", userInfo);
               setUser({
                 id: userInfo.id,
                 first_name: userInfo.first_name,
@@ -171,27 +213,27 @@ function useVKBridge() {
               setLoading(false);
             })
             .catch((err: any) => {
-              console.error('VK Legacy API error:', err);
-              setError("Не удалось получить данные пользователя через VK API: " + JSON.stringify(err));
+              console.error("❌ Ошибка legacy VK API:", err);
+              setError("Ошибка legacy VK API: " + JSON.stringify(err));
               setLoading(false);
             });
-        }, 100); // Небольшая задержка для инициализации
+        }, 100);
       }
     } catch (error) {
-      console.error('VK Bridge initialization error:', error);
-      setError("Ошибка инициализации VK Bridge: " + error);
+      console.error("❌ Критическая ошибка авторизации VK:", error);
+      setError("Критическая ошибка VK: " + error);
       setLoading(false);
     }
   }, [getDiagnostics]);
 
   useEffect(() => {
+    console.log("=== ИНИЦИАЛИЗАЦИЯ useVKBridge ===");
     const available = isVKBridgeAvailable();
     setIsAvailable(available);
     const diag = getDiagnostics();
     setDiagnostics(diag);
     
-    console.log('VK Bridge availability check:', available);
-    console.log('Full diagnostics:', diag);
+    console.log(`Hook инициализирован. VK доступен: ${available}`);
   }, [getDiagnostics]);
 
   return { isAvailable, user, loading, error, authorize, diagnostics };
