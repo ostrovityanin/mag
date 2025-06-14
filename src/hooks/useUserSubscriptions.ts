@@ -15,7 +15,7 @@ interface SubscriptionResult {
   missingChannels: Channel[];
   isLoading: boolean;
   error: string | null;
-  debugInfo?: any; // добавляем для возврата деталей в UI
+  debugInfo?: any; // для возврата в UI, но не писать в консоль!
 }
 
 export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
@@ -24,7 +24,7 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
   return useQuery<SubscriptionResult, Error>({
     queryKey: ['user-subscriptions', authenticatedUser?.id, appCode],
     enabled: isAuthenticated && !!authenticatedUser,
-    staleTime: 30000, // 30 секунд
+    staleTime: 30000,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
     queryFn: async () => {
@@ -32,7 +32,7 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
         throw new Error('Пользователь не аутентифицирован');
       }
 
-      // --- Начало лога ---
+      // Не пишем ничего в консоль!
       const debugInfo: any = {
         authenticatedUser,
         step: 'start',
@@ -46,11 +46,8 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
         thrownError: null,
       };
       debugInfo.times.start = Date.now();
-      console.log('[ПОДПИСКИ] --- НАЧАЛО ПРОВЕРКИ ПОДПИСОК ---');
-      console.log('[ПОДПИСКИ]', { authenticatedUser, appCode });
 
       try {
-        // 1. Получаем список обязательных каналов для приложения
         const { data: appChannels, error: appChannelsError } = await supabase
           .from('app_channels')
           .select(`
@@ -69,12 +66,10 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
         debugInfo.appChannelsRaw = appChannels;
         if (appChannelsError) {
           debugInfo.thrownError = appChannelsError;
-          console.error('[ПОДПИСКИ] Ошибка получения каналов:', appChannelsError);
           throw new Error('Не удалось получить список каналов');
         }
 
         if (!appChannels || appChannels.length === 0) {
-          console.log('[ПОДПИСКИ] Нет обязательных каналов для приложения');
           debugInfo.channels = [];
           return {
             hasUnsubscribedChannels: false,
@@ -85,7 +80,6 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
           };
         }
 
-        // 2. Извлекаем данные каналов
         const channels: Channel[] = appChannels
           .map(ac => ac.channels)
           .filter(Boolean)
@@ -109,12 +103,9 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
           };
         }
 
-        // 3. Подготавливаем список идентификаторов каналов для проверки
         const channelIdentifiers = channels.map(c => c.chat_id || c.username!);
         debugInfo.channelIdentifiers = channelIdentifiers;
-        console.log('[ПОДПИСКИ] Идентификаторы каналов для проверки:', channelIdentifiers);
 
-        // 4. Вызываем edge function для проверки подписок
         const { data: checkResult, error: checkError } = await supabase.functions.invoke(
           'simple-check-subscription',
           {
@@ -129,12 +120,9 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
         debugInfo.checkError = checkError;
 
         if (checkError) {
-          console.error('[ПОДПИСКИ] Ошибка вызова функции проверки:', checkError);
           debugInfo.thrownError = checkError;
           throw new Error('Ошибка проверки подписок: ' + checkError.message);
         }
-
-        console.log('[ПОДПИСКИ] Результат функции:', checkResult);
 
         // 5. Обрабатываем результат
         const subscriptions = checkResult?.subscriptions || {};
@@ -157,13 +145,10 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
           debugInfo,
         };
 
-        console.log('[ПОДПИСКИ] --- РЕЗУЛЬТАТ:', result);
-
         return result;
 
       } catch (error) {
         debugInfo.thrownError = error;
-        console.error('[ПОДПИСКИ] Критическая ошибка проверки подписок:', error);
         return {
           hasUnsubscribedChannels: true,
           missingChannels: [],
