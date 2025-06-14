@@ -51,12 +51,15 @@ export const useTelegramAuth = () => {
       // Логируем попытку аутентификации
       logAdminAction({
         log_type: 'auth_attempt',
-        operation: 'user_authentication',
+        operation: 'user_login_attempt',
         details: {
           telegram_id: telegramUser.id,
           username: telegramUser.username,
+          first_name: telegramUser.first_name,
+          last_name: telegramUser.last_name,
           has_premium: telegramUser.is_premium,
           language: telegramUser.language_code,
+          timestamp: new Date().toISOString(),
         },
         telegram_user_id: telegramUser.id,
         success: true,
@@ -109,11 +112,18 @@ export const useTelegramAuth = () => {
 
         console.log('Пользователь обновлен:', updatedUser);
         
-        // Логируем успешное обновление
+        // Логируем успешный вход существующего пользователя
         logAdminAction({
           log_type: 'user_load',
-          operation: 'update_existing_user',
-          details: { user_id: updatedUser.id, telegram_id: telegramUser.id },
+          operation: 'existing_user_login',
+          details: { 
+            user_id: updatedUser.id, 
+            telegram_id: telegramUser.id,
+            last_login_before: existingUser.last_login,
+            login_time: userData.last_login,
+            username: telegramUser.username,
+            is_premium: telegramUser.is_premium,
+          },
           telegram_user_id: telegramUser.id,
           execution_time_ms: Date.now() - startTime,
           success: true,
@@ -140,8 +150,17 @@ export const useTelegramAuth = () => {
         // Логируем создание нового пользователя
         logAdminAction({
           log_type: 'user_load',
-          operation: 'create_new_user',
-          details: { user_id: newUser.id, telegram_id: telegramUser.id },
+          operation: 'new_user_registration',
+          details: { 
+            user_id: newUser.id, 
+            telegram_id: telegramUser.id,
+            registration_time: userData.last_login,
+            username: telegramUser.username,
+            first_name: telegramUser.first_name,
+            last_name: telegramUser.last_name,
+            is_premium: telegramUser.is_premium,
+            language_code: telegramUser.language_code,
+          },
           telegram_user_id: telegramUser.id,
           execution_time_ms: Date.now() - startTime,
           success: true,
@@ -155,8 +174,13 @@ export const useTelegramAuth = () => {
       // Логируем ошибку аутентификации
       logAdminAction({
         log_type: 'auth_attempt',
-        operation: 'user_authentication_failed',
-        details: { telegram_id: telegramUser.id, error: err instanceof Error ? err.message : 'Unknown error' },
+        operation: 'user_login_failed',
+        details: { 
+          telegram_id: telegramUser.id, 
+          username: telegramUser.username,
+          error: err instanceof Error ? err.message : 'Unknown error',
+          timestamp: new Date().toISOString(),
+        },
         telegram_user_id: telegramUser.id,
         execution_time_ms: Date.now() - startTime,
         success: false,
@@ -282,6 +306,21 @@ export const useTelegramAuth = () => {
           .eq('session_token', sessionToken);
       }
       
+      // Логируем выход пользователя
+      if (currentUser) {
+        logAdminAction({
+          log_type: 'auth_attempt',
+          operation: 'user_logout',
+          details: {
+            user_id: currentUser.id,
+            telegram_id: currentUser.telegram_id,
+            logout_time: new Date().toISOString(),
+          },
+          telegram_user_id: currentUser.telegram_id,
+          success: true,
+        });
+      }
+      
       localStorage.removeItem('telegram_session_token');
       setCurrentUser(null);
     } catch (err) {
@@ -299,6 +338,19 @@ export const useTelegramAuth = () => {
         if (userData) {
           console.log('Сессия валидна, пользователь восстановлен:', userData);
           setCurrentUser(userData);
+          
+          // Логируем восстановление сессии
+          logAdminAction({
+            log_type: 'auth_attempt',
+            operation: 'session_restored',
+            details: {
+              user_id: userData.id,
+              telegram_id: userData.telegram_id,
+              restored_time: new Date().toISOString(),
+            },
+            telegram_user_id: userData.telegram_id,
+            success: true,
+          });
         } else {
           console.log('Сессия недействительна, требуется повторная аутентификация');
         }

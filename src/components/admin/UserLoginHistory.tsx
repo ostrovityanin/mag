@@ -1,338 +1,305 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+import React, { useState, useEffect } from 'react';
+import { useAdminLogs } from '@/hooks/useAdminLogs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { Input } from '@/components/ui/input';
 import { 
-  User, 
+  UserCheck, 
   Users, 
   Clock, 
-  Shield, 
-  Crown, 
-  Settings,
-  RefreshCw,
-  Calendar,
-  Hash
+  Filter,
+  Search,
+  Activity,
+  LogIn,
+  LogOut,
+  UserPlus,
+  RefreshCw
 } from 'lucide-react';
-
-interface TelegramUser {
-  id: string;
-  telegram_id: number;
-  username?: string;
-  first_name?: string;
-  last_name?: string;
-  language_code?: string;
-  is_premium?: boolean;
-  is_bot?: boolean;
-  photo_url?: string;
-  last_login?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-type SortBy = 'recent' | 'username' | 'created_at';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 export const UserLoginHistory: React.FC = () => {
-  const [sortBy, setSortBy] = useState<SortBy>('recent');
+  const { adminLogs, isLoading, logAdminAction } = useAdminLogs();
+  const [filterType, setFilterType] = useState<string>('all');
+  const [searchTelegram, setSearchTelegram] = useState('');
 
-  const { data: users = [], isLoading, refetch } = useQuery({
-    queryKey: ['telegram-users', sortBy],
-    queryFn: async (): Promise<TelegramUser[]> => {
-      console.log('=== ЗАГРУЗКА РЕАЛЬНЫХ ПОЛЬЗОВАТЕЛЕЙ ===');
-      
-      const { data, error } = await supabase
-        .from('telegram_users')
-        .select('*')
-        .order(sortBy === 'recent' ? 'last_login' : sortBy, { ascending: false })
-        .limit(200);
-      
-      if (error) {
-        console.error('Ошибка получения пользователей:', error);
-        throw error;
-      }
-      
-      // Фильтруем только реальных пользователей Telegram
-      const realUsers = (data || []).filter(user => {
-        const isValidTelegramId = user.telegram_id && 
-                                  user.telegram_id > 0 && 
-                                  typeof user.telegram_id === 'number';
-        
-        const isNotTestUser = user.telegram_id !== 123456789 && 
-                              user.telegram_id !== 999999999;
-        
-        const hasValidData = user.first_name || user.username;
-        
-        console.log(`Проверка пользователя ${user.telegram_id}:`, {
-          isValidTelegramId,
-          isNotTestUser, 
-          hasValidData,
-          include: isValidTelegramId && isNotTestUser && hasValidData
-        });
-        
-        return isValidTelegramId && isNotTestUser && hasValidData;
-      });
-      
-      console.log('Общее количество записей в БД:', data?.length);
-      console.log('Отфильтровано реальных пользователей:', realUsers.length);
-      console.log('Реальные пользователи:', realUsers);
-      
-      return realUsers;
-    },
-  });
-
-  const stats = {
-    total: users.length,
-    premium: users.filter(u => u.is_premium).length,
-    recent: users.filter(u => {
-      if (!u.last_login) return false;
-      const lastLogin = new Date(u.last_login);
-      const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      return lastLogin > dayAgo;
-    }).length,
-    withUsername: users.filter(u => u.username).length,
-  };
-
-  const handleRefresh = () => {
-    console.log('Обновление списка пользователей...');
-    refetch();
-  };
-
-  const handleSort = (newSortBy: SortBy) => {
-    setSortBy(newSortBy);
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Никогда';
-    return new Date(dateString).toLocaleString('ru-RU');
-  };
-
-  const formatTelegramId = (telegramId: number) => {
-    return telegramId.toLocaleString('ru-RU');
-  };
-
-  const getUserDisplayName = (user: TelegramUser) => {
-    if (user.first_name && user.last_name) {
-      return `${user.first_name} ${user.last_name}`;
-    }
-    if (user.first_name) {
-      return user.first_name;
-    }
-    if (user.username) {
-      return `@${user.username}`;
-    }
-    return `ID: ${user.telegram_id}`;
-  };
+  // Логируем загрузку истории входов
+  useEffect(() => {
+    logAdminAction({
+      log_type: 'user_load',
+      operation: 'load_user_login_history',
+      details: {
+        page: 'admin',
+        section: 'user_login_history',
+        timestamp: new Date().toISOString(),
+      },
+      success: true,
+    });
+  }, [logAdminAction]);
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Users className="h-5 w-5" />
-            <span>История входов пользователей</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <LoadingSpinner className="mx-auto" />
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center p-8">
+        <LoadingSpinner size="lg" />
+      </div>
     );
   }
 
+  // Фильтруем логи пользователей и подписок
+  const userLogs = adminLogs.filter(log => 
+    ['auth_attempt', 'user_load'].includes(log.log_type) &&
+    ['user_login_attempt', 'existing_user_login', 'new_user_registration', 'user_logout', 'session_restored', 'subscription_check_start', 'subscription_check_complete', 'subscription_check_failed'].includes(log.operation)
+  );
+
+  // Применяем фильтры
+  const filteredLogs = userLogs.filter(log => {
+    const matchesType = filterType === 'all' || log.operation.includes(filterType);
+    const matchesTelegram = searchTelegram === '' || 
+      (log.telegram_user_id && log.telegram_user_id.toString().includes(searchTelegram)) ||
+      (log.details?.username && log.details.username.toLowerCase().includes(searchTelegram.toLowerCase()));
+    
+    return matchesType && matchesTelegram;
+  });
+
+  const getOperationIcon = (operation: string) => {
+    switch (operation) {
+      case 'user_login_attempt':
+      case 'existing_user_login':
+        return <LogIn className="h-4 w-4" />;
+      case 'new_user_registration':
+        return <UserPlus className="h-4 w-4" />;
+      case 'user_logout':
+        return <LogOut className="h-4 w-4" />;
+      case 'session_restored':
+        return <RefreshCw className="h-4 w-4" />;
+      case 'subscription_check_start':
+      case 'subscription_check_complete':
+      case 'subscription_check_failed':
+        return <UserCheck className="h-4 w-4" />;
+      default:
+        return <Activity className="h-4 w-4" />;
+    }
+  };
+
+  const getOperationColor = (operation: string, success: boolean) => {
+    if (!success) return 'bg-red-500 text-white';
+    
+    switch (operation) {
+      case 'new_user_registration':
+        return 'bg-green-500 text-white';
+      case 'existing_user_login':
+        return 'bg-blue-500 text-white';
+      case 'user_logout':
+        return 'bg-gray-500 text-white';
+      case 'session_restored':
+        return 'bg-purple-500 text-white';
+      case 'subscription_check_complete':
+        return 'bg-emerald-500 text-white';
+      case 'subscription_check_start':
+        return 'bg-yellow-500 text-black';
+      case 'subscription_check_failed':
+        return 'bg-red-500 text-white';
+      default:
+        return 'bg-indigo-500 text-white';
+    }
+  };
+
+  const formatDateTime = (dateStr: string) => {
+    return new Date(dateStr).toLocaleString('ru-RU');
+  };
+
+  const getOperationTitle = (operation: string) => {
+    switch (operation) {
+      case 'user_login_attempt':
+        return 'Попытка входа';
+      case 'existing_user_login':
+        return 'Вход пользователя';
+      case 'new_user_registration':
+        return 'Регистрация';
+      case 'user_logout':
+        return 'Выход';
+      case 'session_restored':
+        return 'Восстановление сессии';
+      case 'subscription_check_start':
+        return 'Начало проверки подписок';
+      case 'subscription_check_complete':
+        return 'Проверка подписок завершена';
+      case 'subscription_check_failed':
+        return 'Ошибка проверки подписок';
+      default:
+        return operation;
+    }
+  };
+
+  // Статистика
+  const totalLogins = userLogs.filter(log => log.operation === 'existing_user_login').length;
+  const totalRegistrations = userLogs.filter(log => log.operation === 'new_user_registration').length;
+  const totalSubscriptionChecks = userLogs.filter(log => log.operation === 'subscription_check_complete').length;
+
   return (
     <div className="space-y-6">
+      <div className="flex items-center space-x-3">
+        <Users className="h-6 w-6 text-blue-600" />
+        <h2 className="text-2xl font-bold text-gray-900">История активности пользователей</h2>
+      </div>
+
       {/* Статистика */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Всего пользователей</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
+                <p className="text-sm font-medium text-gray-600">Всего входов</p>
+                <p className="text-2xl font-bold text-blue-600">{totalLogins}</p>
               </div>
-              <Users className="h-8 w-8 text-blue-500" />
+              <LogIn className="h-8 w-8 text-blue-600" />
             </div>
           </CardContent>
         </Card>
-
+        
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Premium</p>
-                <p className="text-2xl font-bold">{stats.premium}</p>
+                <p className="text-sm font-medium text-gray-600">Новых регистраций</p>
+                <p className="text-2xl font-bold text-green-600">{totalRegistrations}</p>
               </div>
-              <Crown className="h-8 w-8 text-yellow-500" />
+              <UserPlus className="h-8 w-8 text-green-600" />
             </div>
           </CardContent>
         </Card>
-
+        
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">За сутки</p>
-                <p className="text-2xl font-bold">{stats.recent}</p>
+                <p className="text-sm font-medium text-gray-600">Проверок подписок</p>
+                <p className="text-2xl font-bold text-purple-600">{totalSubscriptionChecks}</p>
               </div>
-              <Clock className="h-8 w-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">С username</p>
-                <p className="text-2xl font-bold">{stats.withUsername}</p>
-              </div>
-              <User className="h-8 w-8 text-purple-500" />
+              <UserCheck className="h-8 w-8 text-purple-600" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Основная таблица */}
+      {/* Фильтры */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center space-x-2">
-                <Users className="h-5 w-5" />
-                <span>Реальные пользователи Telegram</span>
-              </CardTitle>
-              <CardDescription>
-                Отображаются только подтвержденные пользователи из Telegram
-              </CardDescription>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="flex items-center space-x-1">
-                <Button
-                  variant={sortBy === 'recent' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => handleSort('recent')}
-                >
-                  <Clock className="h-4 w-4 mr-1" />
-                  По входу
-                </Button>
-                <Button
-                  variant={sortBy === 'username' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => handleSort('username')}
-                >
-                  <User className="h-4 w-4 mr-1" />
-                  По имени
-                </Button>
-                <Button
-                  variant={sortBy === 'created_at' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => handleSort('created_at')}
-                >
-                  <Calendar className="h-4 w-4 mr-1" />
-                  По дате
-                </Button>
-              </div>
-              <Separator orientation="vertical" className="h-6" />
-              <Button variant="outline" size="sm" onClick={handleRefresh}>
-                <RefreshCw className="h-4 w-4 mr-1" />
-                Обновить
-              </Button>
-            </div>
-          </div>
+          <CardTitle className="flex items-center space-x-2">
+            <Filter className="h-5 w-5" />
+            <span>Фильтры</span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Пользователь</TableHead>
-                  <TableHead>Telegram ID</TableHead>
-                  <TableHead>Username</TableHead>
-                  <TableHead>Язык</TableHead>
-                  <TableHead>Статус</TableHead>
-                  <TableHead>Последний вход</TableHead>
-                  <TableHead>Регистрация</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white text-sm font-medium">
-                          {getUserDisplayName(user).charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="font-medium">{getUserDisplayName(user)}</p>
-                          {user.is_bot && (
-                            <Badge variant="secondary" className="text-xs">
-                              <Settings className="h-3 w-3 mr-1" />
-                              Бот
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-1">
-                        <Hash className="h-3 w-3 text-muted-foreground" />
-                        <span className="font-mono text-sm">{formatTelegramId(user.telegram_id)}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {user.username ? (
-                        <span className="text-blue-600">@{user.username}</span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {user.language_code?.toUpperCase() || 'RU'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-1">
-                        {user.is_premium && (
-                          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                            <Crown className="h-3 w-3 mr-1" />
-                            Premium
-                          </Badge>
-                        )}
-                        {!user.is_premium && (
-                          <Badge variant="outline">
-                            Обычный
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{formatDate(user.last_login)}</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-muted-foreground">{formatDate(user.created_at)}</span>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div className="flex flex-wrap gap-4">
+            <div className="flex items-center space-x-2">
+              <label className="text-sm font-medium">Тип события:</label>
+              <select 
+                value={filterType} 
+                onChange={(e) => setFilterType(e.target.value)}
+                className="border rounded px-3 py-1 text-sm"
+              >
+                <option value="all">Все</option>
+                <option value="login">Входы</option>
+                <option value="registration">Регистрации</option>
+                <option value="logout">Выходы</option>
+                <option value="subscription">Подписки</option>
+              </select>
+            </div>
             
-            {users.length === 0 && (
-              <div className="text-center py-8">
-                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">
-                  Реальные пользователи Telegram не найдены
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Пользователи появятся здесь после входа через Telegram WebApp
-                </p>
-              </div>
-            )}
+            <div className="flex items-center space-x-2">
+              <Search className="h-4 w-4 text-gray-500" />
+              <Input
+                placeholder="Поиск по Telegram ID или username"
+                value={searchTelegram}
+                onChange={(e) => setSearchTelegram(e.target.value)}
+                className="w-64"
+              />
+            </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Список логов */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>История активности ({filteredLogs.length})</span>
+            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Обновить
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ScrollArea className="h-96">
+            <div className="space-y-3">
+              {filteredLogs.map((log) => (
+                <div key={log.id} className="border rounded-lg p-4 bg-gray-50">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      {getOperationIcon(log.operation)}
+                      <Badge className={getOperationColor(log.operation, log.success)}>
+                        {getOperationTitle(log.operation)}
+                      </Badge>
+                      {log.telegram_user_id && (
+                        <span className="text-sm text-gray-600">
+                          ID: {log.telegram_user_id}
+                        </span>
+                      )}
+                      {log.details?.username && (
+                        <span className="text-sm text-gray-600">
+                          @{log.details.username}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm text-gray-500">
+                      <Clock className="h-4 w-4" />
+                      <span>{formatDateTime(log.created_at)}</span>
+                    </div>
+                  </div>
+                  
+                  {log.details?.first_name && (
+                    <div className="text-sm text-gray-700 mb-1">
+                      Имя: {log.details.first_name} {log.details.last_name || ''}
+                    </div>
+                  )}
+                  
+                  {log.execution_time_ms && (
+                    <div className="text-xs text-gray-500">
+                      Время выполнения: {log.execution_time_ms}мс
+                    </div>
+                  )}
+                  
+                  {log.error_message && (
+                    <div className="text-sm text-red-600 font-medium mt-1">
+                      Ошибка: {log.error_message}
+                    </div>
+                  )}
+                  
+                  {Object.keys(log.details || {}).length > 0 && (
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-sm text-blue-600">
+                        Подробности
+                      </summary>
+                      <pre className="mt-1 text-xs bg-white p-2 rounded border overflow-x-auto">
+                        {JSON.stringify(log.details, null, 2)}
+                      </pre>
+                    </details>
+                  )}
+                </div>
+              ))}
+              
+              {filteredLogs.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  Нет записей для отображения
+                </div>
+              )}
+            </div>
+          </ScrollArea>
         </CardContent>
       </Card>
     </div>
