@@ -20,10 +20,10 @@ declare global {
 }
 
 // Проверка на доступность VK Bridge
-const isVKBridgeAvailable = () => {
+const isVKBridgeAvailable = (): boolean => {
   return (
     typeof window !== "undefined" && 
-    (window.vkBridge || window.VKWebAppInit)
+    !!(window.vkBridge || window.VKWebAppInit)
   );
 };
 
