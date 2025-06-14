@@ -4,11 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DRUID_SIGNS } from "@/utils/druid-signs";
 
-// Импортируем pdfjsLib из legacy для Vite
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
+// Новый импорт из pdfjs-dist v4
+import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
 
-// Устанавливаем путь до pdf.worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${(pdfjsLib as any)?.version || "4.10.38"}/pdf.worker.min.js`;
 
 type ParsedTexts = { [signId: string]: string };
 
@@ -48,7 +47,8 @@ export const UploadDruidTextsPDF: React.FC = () => {
 
   async function extractPDFText(file: File): Promise<string> {
     const typedarray = new Uint8Array(await file.arrayBuffer());
-    const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
+    // Получаем pdf-документ через getDocument
+    const pdf = await getDocument({ data: typedarray }).promise as any;
     let fullText = "";
 
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
