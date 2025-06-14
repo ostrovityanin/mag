@@ -15,7 +15,7 @@ interface SubscriptionResult {
   missingChannels: Channel[];
   isLoading: boolean;
   error: string | null;
-  debugInfo?: any; // для возврата в UI, но не писать в консоль!
+  debugInfo?: any;
 }
 
 export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
@@ -32,7 +32,6 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
         throw new Error('Пользователь не аутентифицирован');
       }
 
-      // Не пишем ничего в консоль!
       const debugInfo: any = {
         authenticatedUser,
         step: 'start',
@@ -106,12 +105,15 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
         const channelIdentifiers = channels.map(c => c.chat_id || c.username!);
         debugInfo.channelIdentifiers = channelIdentifiers;
 
+        // Добавляем передачу username и appCode для логирования
         const { data: checkResult, error: checkError } = await supabase.functions.invoke(
           'simple-check-subscription',
           {
             body: {
               userId: authenticatedUser.telegram_id.toString(),
               channelIds: channelIdentifiers,
+              appCode, // <- новый параметр для таблицы subscription_checks_log
+              username: authenticatedUser.username
             },
           }
         );
@@ -124,7 +126,6 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
           throw new Error('Ошибка проверки подписок: ' + checkError.message);
         }
 
-        // 5. Обрабатываем результат
         const subscriptions = checkResult?.subscriptions || {};
         const missingChannels: Channel[] = [];
 

@@ -258,6 +258,33 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_checks_log: {
+        Row: {
+          app_code: string
+          channel_check_results: Json
+          checked_at: string
+          id: string
+          telegram_user_id: number
+          username: string | null
+        }
+        Insert: {
+          app_code?: string
+          channel_check_results: Json
+          checked_at?: string
+          id?: string
+          telegram_user_id: number
+          username?: string | null
+        }
+        Update: {
+          app_code?: string
+          channel_check_results?: Json
+          checked_at?: string
+          id?: string
+          telegram_user_id?: number
+          username?: string | null
+        }
+        Relationships: []
+      }
       system_logs: {
         Row: {
           context: Json | null

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useChannels } from '@/hooks/useChannels';
 import { useAdminLogs } from '@/hooks/useAdminLogs';
@@ -11,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Settings, Users, BarChart3, Shield, FileText, UserCheck, Activity } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { SubscriptionCheckLogs } from '@/components/admin/SubscriptionCheckLogs';
 
 export const AdminPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('channels');
@@ -135,6 +135,9 @@ export const AdminPage: React.FC = () => {
               <Shield className="h-4 w-4" />
               <span>Настройки</span>
             </TabsTrigger>
+            <TabsTrigger value="subscription-checks" className="flex items-center space-x-2">
+              <span className="font-semibold">Проверки подписок</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="channels">
@@ -165,6 +168,17 @@ export const AdminPage: React.FC = () => {
                 <Button variant="outline" disabled>
                   Скоро появится
                 </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="subscription-checks">
+            <Card>
+              <CardHeader>
+                <CardTitle>Логи проверки подписки пользователей</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SubscriptionCheckLogs />
               </CardContent>
             </Card>
           </TabsContent>

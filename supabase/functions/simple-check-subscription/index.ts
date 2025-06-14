@@ -15,8 +15,8 @@ serve(async (req) => {
   try {
     console.log('=== ПРОВЕРКА ПОДПИСОК ===');
     
-    const { userId, channelIds } = await req.json();
-    console.log('Параметры:', { userId, channelIds });
+    const { userId, channelIds, appCode = 'druid', username } = await req.json();
+    console.log('Параметры:', { userId, channelIds, appCode, username });
 
     if (!userId || !Array.isArray(channelIds)) {
       console.error('Неверные параметры входа');
@@ -43,7 +43,6 @@ serve(async (req) => {
       );
     }
 
-    // Получаем токен бота из секретов
     const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
     if (!botToken) {
       console.error('TELEGRAM_BOT_TOKEN не найден');
@@ -65,39 +64,55 @@ serve(async (req) => {
     for (const chId of channelIds) {
       try {
         let chatId = chId;
-        // Если передали username без "@", добавим его
         if (typeof chatId === 'string' && !chatId.startsWith('@') && isNaN(Number(chatId))) {
           chatId = '@' + chatId;
         }
-        
-        console.log(`Проверяем канал: ${chatId} для пользователя ${userId}`);
-        
+
         const telegramUrl = `https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${encodeURIComponent(chatId)}&user_id=${encodeURIComponent(userId)}`;
-        console.log('Запрос к Telegram API:', telegramUrl.replace(botToken, '[СКРЫТ]'));
 
         const response = await fetch(telegramUrl);
         const data = await response.json();
-        
-        console.log(`Ответ Telegram API для ${chatId}:`, data);
 
         if (response.ok && data.ok) {
           const memberStatus = data.result?.status;
           const isSubscribed = ['member', 'administrator', 'creator'].includes(memberStatus);
-          
-          console.log(`Канал ${chatId} - статус пользователя: ${memberStatus}, подписан: ${isSubscribed}`);
           subscriptions[chId] = isSubscribed;
         } else {
-          console.error(`Ошибка Telegram API для канала ${chatId}:`, data);
           subscriptions[chId] = false;
         }
-        
       } catch (error) {
-        console.error(`Ошибка при проверке канала ${chId}:`, error);
         subscriptions[chId] = false;
       }
     }
 
-    console.log('Итоговый результат проверки подписок:', subscriptions);
+    // Запись в логи подписок
+    try {
+      // Получаем авторизационный ключ и url из переменных окружения
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+      if (supabaseUrl && supabaseAnonKey) {
+        const logBody = {
+          telegram_user_id: userId,
+          username,
+          checked_at: new Date().toISOString(),
+          channel_check_results: subscriptions,
+          app_code: appCode
+        };
+        await fetch(`${supabaseUrl}/rest/v1/subscription_checks_log`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': supabaseAnonKey,
+            'Authorization': `Bearer ${supabaseAnonKey}`,
+            'Prefer': 'return=representation',
+          },
+          body: JSON.stringify(logBody),
+        });
+      }
+    } catch (logErr) {
+      console.error('Ошибка записи subscription_checks_log', logErr);
+      // Не прерываем основной ответ
+    }
 
     return new Response(
       JSON.stringify({ subscriptions }),
