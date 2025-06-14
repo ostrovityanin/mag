@@ -2,103 +2,65 @@
 import { useState, useEffect } from 'react';
 import { TelegramWebApp, TelegramUser } from '@/types/telegram';
 
+/**
+ * Строго определяет только реального пользователя Telegram WebApp.
+ * НИКОГДА не создает тестовых юзеров!
+ */
 export const useTelegram = () => {
   const [webApp, setWebApp] = useState<TelegramWebApp | null>(null);
   const [user, setUser] = useState<TelegramUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    console.log('=== ИНИЦИАЛИЗАЦИЯ TELEGRAM HOOK ===');
-    
+    console.log('=== Telegram Auth: ИНИЦИАЛИЗАЦИЯ ===');
+
     const initTelegram = () => {
       try {
-        // Проверяем доступность Telegram WebApp
-        if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+        // Telegram WebApp должен быть доступен в window
+        if (
+          typeof window !== 'undefined' &&
+          window.Telegram?.WebApp &&
+          window.Telegram?.WebApp.initDataUnsafe?.user
+        ) {
           const tg = window.Telegram.WebApp;
-          console.log('Telegram WebApp найден:', tg);
-          console.log('initData:', tg.initData);
-          console.log('initDataUnsafe:', tg.initDataUnsafe);
-          
           setWebApp(tg);
-          
-          // Инициализируем WebApp
+
+          // Инициализация WebApp
           tg.ready();
           tg.expand();
-          
-          // Извлекаем пользователя
-          const telegramUser = tg.initDataUnsafe?.user;
-          console.log('Данные пользователя из initDataUnsafe:', telegramUser);
-          
+
+          const telegramUser = tg.initDataUnsafe.user;
           if (telegramUser && telegramUser.id) {
-            console.log('Пользователь успешно получен:', telegramUser);
             setUser(telegramUser);
+            console.log('Telegram пользователь инициализирован:', telegramUser);
           } else {
-            console.warn('Пользователь не найден в initDataUnsafe');
-            
-            // Попробуем альтернативный способ для тестирования
-            if (tg.initData && tg.initData.includes('user=')) {
-              try {
-                // Парсим initData вручную для отладки
-                const urlParams = new URLSearchParams(tg.initData);
-                const userParam = urlParams.get('user');
-                if (userParam) {
-                  const parsedUser = JSON.parse(decodeURIComponent(userParam));
-                  console.log('Пользователь из initData:', parsedUser);
-                  setUser(parsedUser);
-                } else {
-                  console.log('Параметр user не найден в initData');
-                }
-              } catch (parseError) {
-                console.error('Ошибка парсинга данных пользователя:', parseError);
-              }
-            }
-            
-            // Для разработки/тестирования можем создать тестового пользователя
-            // ТОЛЬКО если мы в среде разработки
-            if (process.env.NODE_ENV === 'development' && !telegramUser) {
-              console.log('РЕЖИМ РАЗРАБОТКИ: Создаем тестового пользователя');
-              const testUser: TelegramUser = {
-                id: 1450383115, // Реальный ID из логов Edge Function
-                first_name: 'Test',
-                last_name: 'User',
-                username: 'testuser',
-                language_code: 'ru',
-                is_bot: false,
-              };
-              setUser(testUser);
-            }
+            setUser(null);
+            console.warn('Пользователь Telegram не найден в initDataUnsafe!');
           }
         } else {
-          console.warn('Telegram WebApp не доступен');
-          
-          // Для разработки/тестирования
-          if (process.env.NODE_ENV === 'development') {
-            console.log('РЕЖИМ РАЗРАБОТКИ: Эмулируем Telegram WebApp');
-            const testUser: TelegramUser = {
-              id: 1450383115,
-              first_name: 'Test',
-              last_name: 'User', 
-              username: 'testuser',
-              language_code: 'ru',
-              is_bot: false,
-            };
-            setUser(testUser);
-          }
+          setUser(null);
+          setWebApp(null);
+          console.warn('Telegram WebApp не обнаружен. Ожидается запуск только через Telegram!');
         }
       } catch (error) {
+        setUser(null);
+        setWebApp(null);
         console.error('Ошибка инициализации Telegram:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    // Небольшая задержка для загрузки Telegram WebApp
-    const timer = setTimeout(initTelegram, 100);
-    
-    return () => clearTimeout(timer);
+    // Запускаем инициализацию сразу
+    initTelegram();
+
+    // Нет необходимости делать таймер, т.к. тестовый режим больше не поддерживается.
   }, []);
 
-  // Функции для работы с WebApp
+  // Строго без тестового режима!
+  // Только методы WebApp, все Dev-вставки убраны.
+
+  // Кнопки взаимодействия с Telegram UI
   const showMainButton = (text: string, onClick: () => void) => {
     if (webApp?.MainButton) {
       webApp.MainButton.text = text;
@@ -145,10 +107,7 @@ export const useTelegram = () => {
     },
   };
 
-  console.log('=== useTelegram РЕЗУЛЬТАТ ===');
-  console.log('WebApp:', webApp);
-  console.log('User:', user);
-  console.log('IsLoading:', isLoading);
+  console.log('=== useTelegram RESULT ===', { webApp, user, isLoading });
 
   return {
     webApp,
