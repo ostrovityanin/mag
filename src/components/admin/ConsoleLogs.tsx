@@ -26,6 +26,15 @@ interface ConsoleLogEntry {
   stack?: string;
 }
 
+// Безопасная функция для проверки cross-origin свойств
+const safeGetProperty = (obj: any, property: string): any => {
+  try {
+    return obj?.[property];
+  } catch (e) {
+    return `[Cross-origin access denied for ${property}]`;
+  }
+};
+
 export const ConsoleLogs: React.FC = () => {
   const [logs, setLogs] = useState<ConsoleLogEntry[]>([]);
   const [isCapturing, setIsCapturing] = useState(true);
@@ -87,7 +96,7 @@ export const ConsoleLogs: React.FC = () => {
 
   // Добавляем детальную диагностику VK окружения при загрузке
   useEffect(() => {
-    console.log("=== ДЕТАЛЬНАЯ VK ДИАГНОСТИКА ===");
+    console.log("=== БЕЗОПАСНАЯ VK ДИАГНОСТИКА ===");
     console.log("User Agent:", navigator.userAgent);
     console.log("URL:", window.location.href);
     console.log("Referer:", document.referrer);
@@ -95,18 +104,29 @@ export const ConsoleLogs: React.FC = () => {
     console.log("window.VKWebAppInit:", !!window.VKWebAppInit);
     console.log("All window VK properties:", Object.keys(window).filter(key => key.toLowerCase().includes('vk')));
     
-    // Проверяем все возможные VK объекты
+    // Проверяем все возможные VK объекты безопасно
     const vkChecks = {
       'window.vkBridge': window.vkBridge,
       'window.VKWebAppInit': window.VKWebAppInit,
       'window.VKWebAppGetUserInfo': window.VKWebAppGetUserInfo,
       'window.VK': (window as any).VK,
       'window.VKWebApp': (window as any).VKWebApp,
-      'window.parent.vkBridge': window.parent?.vkBridge,
-      'window.top.vkBridge': window.top?.vkBridge,
     };
     
-    console.log("VK Objects check:", vkChecks);
+    // Безопасная проверка parent и top окон
+    try {
+      vkChecks['window.parent.vkBridge'] = safeGetProperty(window.parent, 'vkBridge');
+    } catch (e) {
+      vkChecks['window.parent.vkBridge'] = '[Cross-origin access denied]';
+    }
+    
+    try {
+      vkChecks['window.top.vkBridge'] = safeGetProperty(window.top, 'vkBridge');
+    } catch (e) {
+      vkChecks['window.top.vkBridge'] = '[Cross-origin access denied]';
+    }
+    
+    console.log("VK Objects check (безопасно):", vkChecks);
     
     // Проверяем URL параметры
     const urlParams = new URLSearchParams(window.location.search);
@@ -139,8 +159,14 @@ export const ConsoleLogs: React.FC = () => {
     console.log("Parent exists:", !!window.parent);
     console.log("Top exists:", !!window.top);
     
+    // Безопасная проверка parent location
     try {
-      console.log("Parent location accessible:", window.parent.location.href);
+      const parentLocation = safeGetProperty(window.parent, 'location');
+      if (typeof parentLocation === 'object' && parentLocation !== null) {
+        console.log("Parent location accessible:", safeGetProperty(parentLocation, 'href'));
+      } else {
+        console.log("Parent location access:", parentLocation);
+      }
     } catch (e) {
       console.log("Parent location access denied:", e.message);
     }
@@ -149,8 +175,12 @@ export const ConsoleLogs: React.FC = () => {
     console.log("PostMessage available:", typeof window.postMessage === 'function');
     
     // Слушаем сообщения от родительского окна
-    const messageListener = (event) => {
-      console.log("Received message from parent:", event);
+    const messageListener = (event: MessageEvent) => {
+      console.log("Received message from parent:", {
+        origin: event.origin,
+        data: event.data,
+        source: event.source === window.parent ? 'parent' : 'other'
+      });
     };
     
     window.addEventListener('message', messageListener);
@@ -205,7 +235,7 @@ export const ConsoleLogs: React.FC = () => {
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Terminal className="h-5 w-5" />
-            <span>Консольные логи (расширенная диагностика VK)</span>
+            <span>Консольные логи (безопасная VK диагностика)</span>
             <Badge variant={isCapturing ? 'default' : 'secondary'}>
               {isCapturing ? 'Захват включен' : 'Захват отключен'}
             </Badge>
