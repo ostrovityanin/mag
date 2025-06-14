@@ -4,10 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DRUID_SIGNS } from "@/utils/druid-signs";
 
-// Новый импорт из pdfjs-dist v4
+// Импортируем API pdfjs для браузера
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
 
-GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${(pdfjsLib as any)?.version || "4.10.38"}/pdf.worker.min.js`;
+// Жёстко задаём версию PDF.js для CDN-worker
+GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.js";
 
 type ParsedTexts = { [signId: string]: string };
 
