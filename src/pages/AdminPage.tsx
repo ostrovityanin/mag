@@ -12,6 +12,7 @@ import { Settings, Users, BarChart3, Shield, FileText, UserCheck, Activity } fro
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { SubscriptionCheckLogs } from '@/components/admin/SubscriptionCheckLogs';
 import { AdminDruidSigns } from "@/components/admin/AdminDruidSigns";
+import { UploadDruidTextsPDF } from "@/components/admin/UploadDruidTextsPDF";
 
 export const AdminPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('channels');
@@ -188,6 +189,7 @@ export const AdminPage: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="druid-signs">
+            <UploadDruidTextsPDF />
             <AdminDruidSigns />
           </TabsContent>
         </Tabs>
