@@ -3,15 +3,13 @@ import React, { useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DRUID_SIGNS } from "@/utils/druid-signs";
-// Исправленный импорт PDF-js API
-import * as pdfjsLib from "pdfjs-dist";
-// Импорт воркера через url
-import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.js?url";
+// Импорт API pdf.js для браузера корректным способом для Vite
+import * as pdfjsLib from "pdfjs-dist/build/pdf";
+
+// Настраиваем workerSrc строкой — не импортируем файл! (Vite иначе не сможет собрать)
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.js";
 
 type ParsedTexts = { [signId: string]: string };
-
-// Установка workerSrc — обязательно для корректной работы в браузере
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 export const UploadDruidTextsPDF: React.FC = () => {
   const inputRef = useRef<HTMLInputElement | null>(null);
