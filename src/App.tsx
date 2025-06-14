@@ -22,6 +22,11 @@ const TelegramLayout = () => (
 );
 
 function App() {
+  // Логирование для отладки
+  console.log("App component rendered");
+  console.log("Current URL:", window.location.href);
+  console.log("Current pathname:", window.location.pathname);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -29,23 +34,27 @@ function App() {
         <Sonner />
         <Router>
           <Routes>
-            {/* Роуты БЕЗ TelegramProvider - для VK Mini App */}
+            {/* VK Mini App роуты - максимальное покрытие путей */}
             <Route path="/" element={<VKMiniAppPage />} />
+            <Route path="/index.html" element={<VKMiniAppPage />} />
             <Route path="/vk-mini-app" element={<VKMiniAppPage />} />
-            <Route path="/admin" element={<AdminPage />} />
-            
-            {/* Специальный роут для /druid без Telegram Provider */}
             <Route path="/druid" element={<VKMiniAppPage />} />
             <Route path="/Druid" element={<VKMiniAppPage />} />
+            <Route path="/app" element={<VKMiniAppPage />} />
+            <Route path="/main" element={<VKMiniAppPage />} />
             
-            <Route path="*" element={<NotFound />} />
-
+            {/* Админка без Telegram Provider */}
+            <Route path="/admin" element={<AdminPage />} />
+            
             {/* Роуты, требующие TelegramProvider */}
             <Route element={<TelegramLayout />}>
               <Route path="/telegram" element={<Index />} />
               <Route path="/home" element={<HomePage />} />
               <Route path="/telegram/druid" element={<DruidPage />} />
             </Route>
+            
+            {/* Fallback для всех остальных путей - тоже VK Mini App */}
+            <Route path="*" element={<VKMiniAppPage />} />
           </Routes>
         </Router>
       </TooltipProvider>
