@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useTelegramContext } from '@/components/TelegramProvider';
 import { useUserSubscriptions } from '@/hooks/useUserSubscriptions';
