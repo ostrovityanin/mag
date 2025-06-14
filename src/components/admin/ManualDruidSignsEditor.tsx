@@ -7,13 +7,11 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import type { Database } from "@/integrations/supabase/types";
 
-interface SignTextRecord {
-  sign_id: string;
-  text: string;
-  id?: string;
-  updated_at?: string;
-}
+// Типизация по схеме Supabase
+type DruidSignTextRow = Database["public"]["Tables"]["druid_sign_texts"]["Row"];
+type DruidSignTextInsert = Database["public"]["Tables"]["druid_sign_texts"]["Insert"];
 
 export const ManualDruidSignsEditor: React.FC = () => {
   const [texts, setTexts] = useState<{ [id: string]: string }>(() =>
@@ -31,8 +29,8 @@ export const ManualDruidSignsEditor: React.FC = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from<SignTextRecord>("druid_sign_texts")
-        .select("sign_id,text");
+        .from("druid_sign_texts")
+        .select("sign_id,text") as { data: Array<Pick<DruidSignTextRow, "sign_id" | "text">> | null, error: any };
 
       if (error) {
         toast({
@@ -67,7 +65,7 @@ export const ManualDruidSignsEditor: React.FC = () => {
     setLoading(true);
     try {
       // Преобразуем в массив {sign_id, text}
-      const records: SignTextRecord[] = Object.entries(texts).map(
+      const records: DruidSignTextInsert[] = Object.entries(texts).map(
         ([sign_id, text]) => ({
           sign_id,
           text,
@@ -75,7 +73,7 @@ export const ManualDruidSignsEditor: React.FC = () => {
       );
       // upsert по sign_id (повторно создаём или обновляем)
       const { error } = await supabase
-        .from<SignTextRecord>("druid_sign_texts")
+        .from("druid_sign_texts")
         .upsert(records, { onConflict: "sign_id" });
 
       if (error) {
