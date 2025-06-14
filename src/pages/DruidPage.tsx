@@ -119,11 +119,11 @@ export const DruidPage: React.FC = () => {
     );
   }
 
-  // Ошибка проверки подписок
+  // Ошибка проверки подписок: добавляем подробный debugInfo в UI
   if (subscriptionCheck.error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center">
-        <div className="text-center p-4">
+        <div className="text-center p-4 w-full max-w-2xl">
           <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <p className="text-red-600 mb-4">Ошибка проверки подписок</p>
           <p className="text-sm text-gray-600 mb-4">{subscriptionCheck.error.message || 'Неизвестная ошибка'}</p>
@@ -131,6 +131,10 @@ export const DruidPage: React.FC = () => {
             <RefreshCw className="h-4 w-4 mr-2" />
             Повторить
           </Button>
+          <div className="mt-6 text-left bg-red-50 border border-red-200 rounded p-4 text-xs max-h-72 overflow-auto">
+            <div className="mb-2 font-semibold">DebugInfo:</div>
+            <pre className="whitespace-pre-wrap">{JSON.stringify(subscriptionCheck.data?.debugInfo, null, 2)}</pre>
+          </div>
         </div>
       </div>
     );
@@ -139,8 +143,9 @@ export const DruidPage: React.FC = () => {
   // Проверяем результат подписок
   const hasUnsubscribedChannels = subscriptionCheck.data?.hasUnsubscribedChannels || false;
   const missingChannels = subscriptionCheck.data?.missingChannels || [];
+  const debugInfo = subscriptionCheck.data?.debugInfo;
 
-  // Если есть неподписанные каналы, показываем экран подписки
+  // Если есть неподписанные каналы, показываем экран подписки + debugInfo визуально
   if (hasUnsubscribedChannels) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex flex-col items-center justify-center p-4">
@@ -153,7 +158,7 @@ export const DruidPage: React.FC = () => {
           </div>
         </div>
 
-        <Card className="max-w-md border-yellow-200">
+        <Card className="max-w-md border-yellow-200 mb-4">
           <CardHeader className="text-center">
             <CardTitle className="flex items-center justify-center space-x-2 text-yellow-700">
               <AlertTriangle className="h-5 w-5" />
@@ -169,14 +174,16 @@ export const DruidPage: React.FC = () => {
                 Для доступа подпишитесь на каналы:
               </p>
             </div>
-            
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <div className="space-y-2 mb-4">
                 {missingChannels.map((channel) => (
                   <div key={channel.id} className="flex items-center justify-between p-2 bg-white rounded border">
                     <span className="text-sm font-medium">{channel.username || channel.name}</span>
                     <Button 
-                      onClick={() => handleOpenChannel(channel)}
+                      onClick={() => {
+                        const channelUrl = `https://t.me/${channel.username?.replace('@', '') || channel.name}`;
+                        window.open(channelUrl, '_blank');
+                      }}
                       size="sm"
                       className="bg-yellow-600 hover:bg-yellow-700"
                     >
@@ -186,7 +193,6 @@ export const DruidPage: React.FC = () => {
                 ))}
               </div>
             </div>
-            
             <div className="pt-4 border-t">
               <p className="text-sm text-gray-600 mb-3">
                 Уже подписались? Проверьте еще раз:
@@ -209,6 +215,60 @@ export const DruidPage: React.FC = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Отладочный блок для супервизуальной проверки */}
+        <div className="w-full max-w-2xl mt-2">
+          <details className="bg-gray-50 rounded border px-4 py-2">
+            <summary className="cursor-pointer font-semibold text-gray-600 mb-2">
+              Отладочная информация по подписочному блоку
+            </summary>
+            <div>
+              <div className="text-[13px] text-gray-600 mb-1">
+                <b>Входящий пользователь:</b>
+              </div>
+              <pre className="bg-white p-2 rounded border text-xs overflow-x-auto mb-2">
+                {JSON.stringify(debugInfo?.authenticatedUser || {}, null, 2)}
+              </pre>
+              <div className="text-[13px] text-gray-600 mb-1">
+                <b>Полный список каналов для app:</b>
+              </div>
+              <pre className="bg-white p-2 rounded border text-xs overflow-x-auto mb-2">
+                {JSON.stringify(debugInfo?.channels || [], null, 2)}
+              </pre>
+              <div className="text-[13px] text-gray-600 mb-1">
+                <b>Идентификаторы для Edge Function:</b>
+              </div>
+              <pre className="bg-white p-2 rounded border text-xs overflow-x-auto mb-2">
+                {JSON.stringify(debugInfo?.channelIdentifiers || [], null, 2)}
+              </pre>
+              <div className="text-[13px] text-gray-600 mb-1">
+                <b>Ответ Edge Function:</b>
+              </div>
+              <pre className="bg-white p-2 rounded border text-xs overflow-x-auto mb-2">
+                {JSON.stringify(debugInfo?.checkResult || {}, null, 2)}
+              </pre>
+              <div className="text-[13px] text-gray-600 mb-1">
+                <b>Каналы, по которым требуется подписка:</b>
+              </div>
+              <pre className="bg-white p-2 rounded border text-xs overflow-x-auto mb-2">
+                {JSON.stringify(debugInfo?.missingChannels || [], null, 2)}
+              </pre>
+              {debugInfo?.thrownError && (
+                <>
+                  <div className="text-[13px] text-red-700 mt-1">
+                    <b>Ошибка в процессе:</b>
+                  </div>
+                  <pre className="bg-white p-2 rounded border text-xs overflow-x-auto mb-1">
+                    {JSON.stringify(debugInfo.thrownError, null, 2)}
+                  </pre>
+                </>
+              )}
+              <div className="text-[13px] text-gray-500 mt-1 mb-2">
+                Тайминги: <pre className="inline">{JSON.stringify(debugInfo?.times || {}, null, 2)}</pre>
+              </div>
+            </div>
+          </details>
+        </div>
       </div>
     );
   }

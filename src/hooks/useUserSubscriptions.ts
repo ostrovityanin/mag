@@ -15,6 +15,7 @@ interface SubscriptionResult {
   missingChannels: Channel[];
   isLoading: boolean;
   error: string | null;
+  debugInfo?: any; // добавляем для возврата деталей в UI
 }
 
 export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
@@ -31,13 +32,25 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
         throw new Error('Пользователь не аутентифицирован');
       }
 
-      console.log('=== НАЧАЛО ПРОВЕРКИ ПОДПИСОК ===');
-      console.log('Пользователь ID:', authenticatedUser.telegram_id);
-      console.log('Приложение:', appCode);
+      // --- Начало лога ---
+      const debugInfo: any = {
+        authenticatedUser,
+        step: 'start',
+        appCode,
+        times: {},
+        appChannelsRaw: null,
+        channels: null,
+        channelIdentifiers: null,
+        checkResult: null,
+        missingChannels: null,
+        thrownError: null,
+      };
+      debugInfo.times.start = Date.now();
+      console.log('[ПОДПИСКИ] --- НАЧАЛО ПРОВЕРКИ ПОДПИСОК ---');
+      console.log('[ПОДПИСКИ]', { authenticatedUser, appCode });
 
       try {
         // 1. Получаем список обязательных каналов для приложения
-        console.log('Получаем список каналов для приложения:', appCode);
         const { data: appChannels, error: appChannelsError } = await supabase
           .from('app_channels')
           .select(`
@@ -52,18 +65,23 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
           .eq('app', appCode)
           .eq('required', true);
 
+        debugInfo.times.gotChannels = Date.now();
+        debugInfo.appChannelsRaw = appChannels;
         if (appChannelsError) {
-          console.error('Ошибка получения каналов приложения:', appChannelsError);
+          debugInfo.thrownError = appChannelsError;
+          console.error('[ПОДПИСКИ] Ошибка получения каналов:', appChannelsError);
           throw new Error('Не удалось получить список каналов');
         }
 
         if (!appChannels || appChannels.length === 0) {
-          console.log('Нет обязательных каналов для приложения');
+          console.log('[ПОДПИСКИ] Нет обязательных каналов для приложения');
+          debugInfo.channels = [];
           return {
             hasUnsubscribedChannels: false,
             missingChannels: [],
             isLoading: false,
-            error: null
+            error: null,
+            debugInfo,
           };
         }
 
@@ -78,23 +96,25 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
             name: c.name
           }));
 
-        console.log('Найдено каналов для проверки:', channels.length);
+        debugInfo.channels = channels;
 
         if (channels.length === 0) {
+          debugInfo.step = 'channels_len_0';
           return {
             hasUnsubscribedChannels: false,
             missingChannels: [],
             isLoading: false,
-            error: null
+            error: null,
+            debugInfo,
           };
         }
 
         // 3. Подготавливаем список идентификаторов каналов для проверки
         const channelIdentifiers = channels.map(c => c.chat_id || c.username!);
-        console.log('Идентификаторы каналов для проверки:', channelIdentifiers);
+        debugInfo.channelIdentifiers = channelIdentifiers;
+        console.log('[ПОДПИСКИ] Идентификаторы каналов для проверки:', channelIdentifiers);
 
         // 4. Вызываем edge function для проверки подписок
-        console.log('Вызываем функцию проверки подписок...');
         const { data: checkResult, error: checkError } = await supabase.functions.invoke(
           'simple-check-subscription',
           {
@@ -104,13 +124,17 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
             },
           }
         );
+        debugInfo.times.invokedFunction = Date.now();
+        debugInfo.checkResult = checkResult;
+        debugInfo.checkError = checkError;
 
         if (checkError) {
-          console.error('Ошибка вызова функции проверки:', checkError);
+          console.error('[ПОДПИСКИ] Ошибка вызова функции проверки:', checkError);
+          debugInfo.thrownError = checkError;
           throw new Error('Ошибка проверки подписок: ' + checkError.message);
         }
 
-        console.log('Результат проверки подписок:', checkResult);
+        console.log('[ПОДПИСКИ] Результат функции:', checkResult);
 
         // 5. Обрабатываем результат
         const subscriptions = checkResult?.subscriptions || {};
@@ -119,34 +143,33 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
         channels.forEach(channel => {
           const identifier = channel.chat_id || channel.username!;
           const isSubscribed = subscriptions[identifier] === true;
-          
-          console.log(`Канал ${channel.name} (${identifier}): ${isSubscribed ? 'подписан' : 'НЕ подписан'}`);
-          
           if (!isSubscribed) {
             missingChannels.push(channel);
           }
         });
+        debugInfo.missingChannels = missingChannels;
 
         const result = {
           hasUnsubscribedChannels: missingChannels.length > 0,
           missingChannels,
           isLoading: false,
-          error: null
+          error: null,
+          debugInfo,
         };
 
-        console.log('=== РЕЗУЛЬТАТ ПРОВЕРКИ ===');
-        console.log('Есть неподписанные каналы:', result.hasUnsubscribedChannels);
-        console.log('Количество неподписанных:', missingChannels.length);
+        console.log('[ПОДПИСКИ] --- РЕЗУЛЬТАТ:', result);
 
         return result;
 
       } catch (error) {
-        console.error('Критическая ошибка проверки подписок:', error);
+        debugInfo.thrownError = error;
+        console.error('[ПОДПИСКИ] Критическая ошибка проверки подписок:', error);
         return {
           hasUnsubscribedChannels: true,
           missingChannels: [],
           isLoading: false,
-          error: error instanceof Error ? error.message : 'Неизвестная ошибка'
+          error: error instanceof Error ? error.message : 'Неизвестная ошибка',
+          debugInfo,
         };
       }
     },
