@@ -13,6 +13,7 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { SubscriptionCheckLogs } from '@/components/admin/SubscriptionCheckLogs';
 import { AdminDruidSigns } from "@/components/admin/AdminDruidSigns";
 import { UploadDruidTextsPDF } from "@/components/admin/UploadDruidTextsPDF";
+import { ManualDruidSignsEditor } from "@/components/admin/ManualDruidSignsEditor";
 
 export const AdminPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('channels');
@@ -190,6 +191,7 @@ export const AdminPage: React.FC = () => {
 
           <TabsContent value="druid-signs">
             <UploadDruidTextsPDF />
+            <ManualDruidSignsEditor />
             <AdminDruidSigns />
           </TabsContent>
         </Tabs>
