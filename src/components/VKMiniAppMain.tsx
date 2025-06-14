@@ -1,7 +1,7 @@
-
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import useVKBridge from "@/hooks/useVKBridge";
+import { ConsoleLogs } from "../admin/ConsoleLogs";
 
 export const VKMiniAppMain: React.FC = () => {
   const [mounted, setMounted] = useState(false);
@@ -277,24 +277,8 @@ export const VKMiniAppMain: React.FC = () => {
         </div>
         
         {/* Основное содержимое */}
-        {!isAvailable && (
-          <div style={{
-            background: '#fef2f2',
-            border: '1px solid #dc2626',
-            padding: '16px',
-            borderRadius: '8px',
-            marginBottom: '16px',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '18px', marginBottom: '8px' }}>⚠️</div>
-            <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
-              VK Bridge не обнаружен
-            </div>
-            <div style={{ fontSize: '14px' }}>
-              Все проверки показывают отсутствие VK окружения.
-              Проверьте логи в админ-панели для подробностей.
-            </div>
-          </div>
+        {!isAvailable && diagnostics && (
+          <ConsoleLogs />
         )}
         
         {isAvailable && !user && (
