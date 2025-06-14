@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Settings, Users, BarChart3, Shield, FileText, UserCheck, Activity } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { SubscriptionCheckLogs } from '@/components/admin/SubscriptionCheckLogs';
+import { AdminDruidSigns } from "@/components/admin/AdminDruidSigns";
 
 export const AdminPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('channels');
@@ -114,7 +115,7 @@ export const AdminPage: React.FC = () => {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 bg-white">
+          <TabsList className="grid w-full grid-cols-7 bg-white">
             <TabsTrigger value="channels" className="flex items-center space-x-2">
               <Settings className="h-4 w-4" />
               <span>Каналы</span>
@@ -137,6 +138,9 @@ export const AdminPage: React.FC = () => {
             </TabsTrigger>
             <TabsTrigger value="subscription-checks" className="flex items-center space-x-2">
               <span className="font-semibold">Проверки подписок</span>
+            </TabsTrigger>
+            <TabsTrigger value="druid-signs" className="flex items-center space-x-2">
+              <span className="font-semibold">Друидские знаки</span>
             </TabsTrigger>
           </TabsList>
 
@@ -181,6 +185,10 @@ export const AdminPage: React.FC = () => {
                 <SubscriptionCheckLogs />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="druid-signs">
+            <AdminDruidSigns />
           </TabsContent>
         </Tabs>
       </div>
