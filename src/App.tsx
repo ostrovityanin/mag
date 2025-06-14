@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,6 +10,7 @@ import { DruidPage } from "@/pages/DruidPage";
 import { AdminPage } from "@/pages/AdminPage";
 import NotFound from "./pages/NotFound";
 import VKMiniAppPage from "@/pages/VKMiniAppPage";
+import Index from "@/pages/Index"; // Импорт новой Index страницы
 
 const queryClient = new QueryClient();
 
@@ -21,7 +23,11 @@ function App() {
           <Sonner />
           <Router>
             <Routes>
-              <Route path="/" element={<HomePage />} />
+              {/* Добавляем рут "/" как мини-аппу для работы с VK */}
+              <Route path="/" element={<VKMiniAppPage />} />
+              {/* Под Telegram оставляем путь /telegram */}
+              <Route path="/telegram" element={<Index />} />
+              <Route path="/home" element={<HomePage />} />
               <Route path="/druid" element={<DruidPage />} />
               <Route path="/Druid" element={<DruidPage />} />
               <Route path="/admin" element={<AdminPage />} />
