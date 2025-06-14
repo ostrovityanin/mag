@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { DRUID_SIGNS } from "@/utils/druid-signs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+import { QuillEditor } from "./QuillEditor";
 
 // Типизация по схеме Supabase
 type DruidSignTextRow = Database["public"]["Tables"]["druid_sign_texts"]["Row"];
@@ -98,13 +98,11 @@ export const ManualDruidSignsEditor: React.FC = () => {
                 <span className="text-2xl">{sign.emoji}</span>
                 <span className="font-semibold">{sign.name}</span>
               </div>
-              <Textarea
-                id={`text-${sign.id}`}
-                className="w-full bg-gray-50"
-                placeholder="Введите/вставьте текст описания с разметкой для этого знака"
-                style={{ minHeight: 100 }}
+              <QuillEditor
                 value={texts[sign.id]}
-                onChange={e => handleChange(sign.id, e.target.value)}
+                onChange={(val) => handleChange(sign.id, val)}
+                placeholder="Введите/отформатируйте текст описания для этого знака"
+                minHeight={120}
                 disabled={loadingIds[sign.id]}
               />
               <div className="flex justify-end">
@@ -122,7 +120,8 @@ export const ManualDruidSignsEditor: React.FC = () => {
           ))}
         </div>
         <div className="text-xs text-gray-500 mt-8">
-          У каждого знака теперь отдельное поле и кнопка для сохранения. Тексты можно вставлять с HTML-тегами и длинными описаниями.
+          Теперь можно использовать форматирование (жирный, курсив, списки, цитаты) и сохранять красиво размеченный текст прямо в базу.<br />
+          При копировании из Word/Google Docs советую очищать форматирование (иконка "ластик" на панели Quill).
         </div>
       </CardContent>
     </Card>
