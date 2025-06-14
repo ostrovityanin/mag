@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { DRUID_SIGNS } from "@/utils/druid-signs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,127 +14,115 @@ type DruidSignTextRow = Database["public"]["Tables"]["druid_sign_texts"]["Row"];
 type DruidSignTextInsert = Database["public"]["Tables"]["druid_sign_texts"]["Insert"];
 
 export const ManualDruidSignsEditor: React.FC = () => {
+  // локальное состояние для текстов и статусов загрузки отдельно для каждого знака
   const [texts, setTexts] = useState<{ [id: string]: string }>(() =>
     Object.fromEntries(DRUID_SIGNS.map(sign => [sign.id, ""]))
   );
-  const [loading, setLoading] = useState(false);
+  const [loadingIds, setLoadingIds] = useState<{ [id: string]: boolean }>(() =>
+    Object.fromEntries(DRUID_SIGNS.map(sign => [sign.id, false]))
+  );
 
-  // Обновляем state для одного знака
+  // При монтировании - подгружаем то, что есть в базе для каждого знака
+  useEffect(() => {
+    const fetchTexts = async () => {
+      const { data, error } = await supabase
+        .from("druid_sign_texts")
+        .select("sign_id,text") as { data: Array<Pick<DruidSignTextRow, "sign_id" | "text">> | null, error: any };
+      if (error) {
+        toast({
+          title: "Ошибка загрузки описаний",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      if (data) {
+        const upd: { [id: string]: string } = { ...texts };
+        data.forEach(rec => {
+          upd[rec.sign_id] = rec.text;
+        });
+        setTexts(upd);
+      }
+    };
+    fetchTexts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Обработка изменения текста
   const handleChange = (id: string, value: string) => {
     setTexts(prev => ({ ...prev, [id]: value }));
   };
 
-  // Загружаем тексты из базы по sign_id
-  const handleLoadFromDb = async () => {
-    setLoading(true);
+  // Сохранение по конкретному знаку
+  const handleSaveSingle = async (sign_id: string) => {
+    setLoadingIds(prev => ({ ...prev, [sign_id]: true }));
     try {
-      const { data, error } = await supabase
-        .from("druid_sign_texts")
-        .select("sign_id,text") as { data: Array<Pick<DruidSignTextRow, "sign_id" | "text">> | null, error: any };
-
-      if (error) {
-        toast({
-          title: "Ошибка загрузки из базы",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else if (data) {
-        // Обновим state, если описание есть для знака
-        const loaded: { [id: string]: string } = { ...texts };
-        data.forEach(record => {
-          loaded[record.sign_id] = record.text;
-        });
-        setTexts(loaded);
-        toast({
-          title: "Данные загружены",
-          description: "Все описания успешно загружены из базы.",
-        });
-      }
-    } catch (e: any) {
-      toast({
-        title: "Неизвестная ошибка загрузки",
-        description: String(e),
-        variant: "destructive",
-      });
-    }
-    setLoading(false);
-  };
-
-  // Сохраняем все значения в Supabase (upsert по sign_id)
-  const handleSaveAll = async () => {
-    setLoading(true);
-    try {
-      // Преобразуем в массив {sign_id, text}
-      const records: DruidSignTextInsert[] = Object.entries(texts).map(
-        ([sign_id, text]) => ({
-          sign_id,
-          text,
-        })
-      );
-      // upsert по sign_id (повторно создаём или обновляем)
+      const payload: DruidSignTextInsert = { sign_id, text: texts[sign_id] };
+      // upsert по sign_id (обновить или создать новую строку)
       const { error } = await supabase
         .from("druid_sign_texts")
-        .upsert(records, { onConflict: "sign_id" });
+        .upsert([payload], { onConflict: "sign_id" });
 
       if (error) {
         toast({
-          title: "Ошибка сохранения",
+          title: `Ошибка сохранения`,
           description: error.message,
           variant: "destructive",
         });
       } else {
         toast({
-          title: "Сохранено",
-          description: "Все описания успешно сохранены в базе.",
+          title: "Успешно сохранено!",
+          description: `Описание для "${DRUID_SIGNS.find(s => s.id === sign_id)?.name || sign_id}" сохранено.`,
         });
       }
     } catch (e: any) {
       toast({
-        title: "Ошибка сохранения",
+        title: `Ошибка сохранения`,
         description: String(e),
         variant: "destructive",
       });
     }
-    setLoading(false);
+    setLoadingIds(prev => ({ ...prev, [sign_id]: false }));
   };
 
   return (
     <Card className="mb-8">
       <CardHeader>
-        <CardTitle>Ручной ввод/редактирование описаний знаков</CardTitle>
+        <CardTitle>Описание знаков (редактирование)</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex mb-4 gap-4">
-          <Button onClick={handleLoadFromDb} disabled={loading}>
-            {loading ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null}
-            Загрузить из базы
-          </Button>
-          <Button onClick={handleSaveAll} disabled={loading}>
-            {loading ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null}
-            Сохранить всё в базу
-          </Button>
-        </div>
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-8">
           {DRUID_SIGNS.map(sign => (
-            <div key={sign.id}>
-              <label className="font-semibold text-base mb-1 flex items-center gap-2" htmlFor={`text-${sign.id}`}>
+            <div key={sign.id} className="p-4 rounded border border-gray-200 bg-white shadow-sm flex flex-col gap-2">
+              <div className="flex items-center gap-3 mb-1">
                 <span className="text-2xl">{sign.emoji}</span>
-                {sign.name}
-              </label>
+                <span className="font-semibold">{sign.name}</span>
+              </div>
               <Textarea
                 id={`text-${sign.id}`}
                 className="w-full bg-gray-50"
-                placeholder="Вставьте/напишите полный текст описания с нужной разметкой для этого знака"
-                style={{ minHeight: 120 }}
+                placeholder="Введите/вставьте текст описания с разметкой для этого знака"
+                style={{ minHeight: 100 }}
                 value={texts[sign.id]}
                 onChange={e => handleChange(sign.id, e.target.value)}
-                disabled={loading}
+                disabled={loadingIds[sign.id]}
               />
+              <div className="flex justify-end">
+                <Button
+                  onClick={() => handleSaveSingle(sign.id)}
+                  disabled={loadingIds[sign.id]}
+                >
+                  {loadingIds[sign.id] ? (
+                    <Loader2 className="animate-spin w-4 h-4 mr-2" />
+                  ) : null}
+                  Сохранить
+                </Button>
+              </div>
             </div>
           ))}
         </div>
-        <div className="text-xs text-gray-500 mt-6">
-          Вы можете спокойно вставлять <b>очень длинные</b> тексты с разметкой (html, теги, переносы и т.п.) для каждого знака.
+        <div className="text-xs text-gray-500 mt-8">
+          У каждого знака теперь отдельное поле и кнопка для сохранения. Тексты можно вставлять с HTML-тегами и длинными описаниями.
         </div>
       </CardContent>
     </Card>
