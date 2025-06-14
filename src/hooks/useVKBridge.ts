@@ -1,6 +1,19 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+// --- Добавляем объявление методов VK Bridge для TypeScript ---
+declare global {
+  interface Window {
+    VKWebAppInit?: () => void;
+    VKWebAppGetUserInfo?: () => Promise<{
+      id: number;
+      first_name: string;
+      last_name: string;
+      photo_200?: string;
+    }>;
+  }
+}
+
 // Проверка на доступность VK Bridge (Mini Apps)
 const isVKBridgeAvailable = () => {
   return typeof window !== "undefined" && typeof window.VKWebAppInit !== "undefined";
