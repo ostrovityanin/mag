@@ -6,7 +6,27 @@ import { getDruidSign } from "@/utils/druid-signs";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 
-// ... MONTHS и daysInMonth без изменений ...
+// --- ДОБАВЛЕНО: массив месяцев для выпадающего списка ---
+const MONTHS = [
+  { label: "Январь", value: 1 },
+  { label: "Февраль", value: 2 },
+  { label: "Март", value: 3 },
+  { label: "Апрель", value: 4 },
+  { label: "Май", value: 5 },
+  { label: "Июнь", value: 6 },
+  { label: "Июль", value: 7 },
+  { label: "Август", value: 8 },
+  { label: "Сентябрь", value: 9 },
+  { label: "Октябрь", value: 10 },
+  { label: "Ноябрь", value: 11 },
+  { label: "Декабрь", value: 12 },
+];
+
+// --- ДОБАВЛЕНО: функция для определения количества дней в месяце ---
+function daysInMonth(month: number, year = 2024) {
+  // Передаем год для корректной проверки високосного февраля
+  return new Date(year, month, 0).getDate();
+}
 
 export const DruidHoroscopeCalculator: React.FC = () => {
   const [month, setMonth] = useState<number | "">("");
@@ -19,7 +39,11 @@ export const DruidHoroscopeCalculator: React.FC = () => {
   // Кеш описаний по id знака
   const descCache = useRef<{ [signId: string]: string }>({});
 
-  // ... вычисление days для dropdown ...
+  // --- ДОБАВЛЕНО: вычисляем массив дней для выбранного месяца ---
+  const days =
+    month !== ""
+      ? Array.from({ length: daysInMonth(Number(month)) }, (_, i) => i + 1)
+      : [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
