@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('=== УПРОЩЕННАЯ ПРОВЕРКА ПОДПИСОК ===');
+    console.log('=== ПРОВЕРКА ПОДПИСОК ===');
     
     const { userId, channelIds } = await req.json();
     console.log('Параметры:', { userId, channelIds });
@@ -21,9 +21,23 @@ serve(async (req) => {
     if (!userId || !Array.isArray(channelIds)) {
       console.error('Неверные параметры входа');
       return new Response(
-        JSON.stringify({ error: 'Неверные параметры входа' }),
+        JSON.stringify({ 
+          error: 'Неверные параметры входа',
+          subscriptions: {}
+        }),
         { 
           status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    if (channelIds.length === 0) {
+      console.log('Нет каналов для проверки');
+      return new Response(
+        JSON.stringify({ subscriptions: {} }),
+        { 
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
@@ -34,7 +48,10 @@ serve(async (req) => {
     if (!botToken) {
       console.error('TELEGRAM_BOT_TOKEN не найден');
       return new Response(
-        JSON.stringify({ error: 'Токен бота не настроен' }),
+        JSON.stringify({ 
+          error: 'Токен бота не настроен',
+          subscriptions: {}
+        }),
         { 
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }

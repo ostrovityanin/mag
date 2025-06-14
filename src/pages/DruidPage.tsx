@@ -1,9 +1,10 @@
+
 import React, { useEffect } from 'react';
 import { useTelegramContext } from '@/components/TelegramProvider';
 import { useUserSubscriptions } from '@/hooks/useUserSubscriptions';
 import SimpleTelegramAuth from '@/components/SimpleTelegramAuth';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, TreePine, Star } from 'lucide-react';
+import { AlertTriangle, TreePine, Star, RefreshCw } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { ZodiacSelector } from '@/components/ui/zodiac-selector';
 import { HoroscopeCard } from '@/components/HoroscopeCard';
@@ -15,13 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 export const DruidPage: React.FC = () => {
   const { toast } = useToast();
   const { isAuthenticated, authenticatedUser } = useTelegramContext();
-  const {
-    data,
-    isLoading,
-    isError,
-    isFetching,
-    refetch,
-  } = useUserSubscriptions('druid');
+  const subscriptionCheck = useUserSubscriptions('druid');
 
   const [selectedSign, setSelectedSign] = React.useState<string | null>(null);
   const [activeTab, setActiveTab] = React.useState('horoscope');
@@ -29,13 +24,7 @@ export const DruidPage: React.FC = () => {
   const [todayHoroscope, setTodayHoroscope] = React.useState<string | null>(null);
   const [todayFortune, setTodayFortune] = React.useState<string | null>(null);
 
-  // 1) При первой активации, как только залогинены — запускаем проверку
-  useEffect(() => {
-    if (isAuthenticated) {
-      refetch();
-    }
-  }, [isAuthenticated, refetch]);
-
+  // Логика обработчиков остается прежней
   const handleSignSelect = (sign: string) => {
     setSelectedSign(sign);
   };
@@ -114,13 +103,13 @@ export const DruidPage: React.FC = () => {
     }
   };
 
-  // 2) Если не залогинены — переадресуем на Telegram-Auth
+  // Если пользователь не авторизован
   if (!isAuthenticated) {
     return <SimpleTelegramAuth />;
   }
 
-  // 3) Ожидаем результат проверки подписок
-  if (isLoading) {
+  // Показываем загрузку при проверке подписок
+  if (subscriptionCheck.isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center">
         <div className="text-center">
@@ -131,14 +120,16 @@ export const DruidPage: React.FC = () => {
     );
   }
 
-  // 4) Ошибка вызова функции — даём «повторить»
-  if (isError) {
+  // Ошибка проверки подписок
+  if (subscriptionCheck.error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center">
         <div className="text-center p-4">
           <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <p className="text-red-600 mb-4">Ошибка проверки подписок</p>
-          <Button onClick={() => refetch()} variant="outline">
+          <p className="text-sm text-gray-600 mb-4">{subscriptionCheck.error}</p>
+          <Button onClick={() => subscriptionCheck.refetch()} variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
             Повторить
           </Button>
         </div>
@@ -146,15 +137,11 @@ export const DruidPage: React.FC = () => {
     );
   }
 
-  // Извлекаем результат с дефолтными значениями, чтобы не получить ошибку типов
-  const hasUnsubscribedChannels =
-    data && typeof data.hasUnsubscribedChannels === 'boolean'
-      ? data.hasUnsubscribedChannels
-      : false;
-  const missingChannels =
-    data && Array.isArray(data.missingChannels) ? data.missingChannels : [];
+  // Проверяем результат подписок
+  const hasUnsubscribedChannels = subscriptionCheck.data?.hasUnsubscribedChannels || false;
+  const missingChannels = subscriptionCheck.data?.missingChannels || [];
 
-  // 5) Если хотя бы один канал не подписан — показываем UI подписки
+  // Если есть неподписанные каналы, показываем экран подписки
   if (hasUnsubscribedChannels) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex flex-col items-center justify-center p-4">
@@ -186,7 +173,7 @@ export const DruidPage: React.FC = () => {
             
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <div className="space-y-2 mb-4">
-                {missingChannels.map((channel: any) => (
+                {missingChannels.map((channel) => (
                   <div key={channel.id} className="flex items-center justify-between p-2 bg-white rounded border">
                     <span className="text-sm font-medium">{channel.username || channel.name}</span>
                     <Button 
@@ -206,12 +193,12 @@ export const DruidPage: React.FC = () => {
                 Уже подписались? Проверьте еще раз:
               </p>
               <Button
-                onClick={() => refetch()}
-                disabled={isFetching}
+                onClick={() => subscriptionCheck.refetch()}
+                disabled={subscriptionCheck.isFetching}
                 size="lg"
                 className="w-full"
               >
-                {isFetching ? (
+                {subscriptionCheck.isFetching ? (
                   <>
                     <LoadingSpinner size="sm" className="mr-2" />
                     Проверяем...
@@ -227,7 +214,7 @@ export const DruidPage: React.FC = () => {
     );
   }
 
-  // 6) Всё подписан — показываем основной контент
+  // Основной контент - пользователь подписан на все каналы
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
       <div className="container mx-auto px-4 py-6">
