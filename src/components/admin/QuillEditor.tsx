@@ -1,7 +1,8 @@
 
-import React from "react";
-import dynamic from "next/dynamic";
+import React, { Suspense } from "react";
 import "react-quill/dist/quill.snow.css";
+
+const ReactQuill = React.lazy(() => import("react-quill"));
 
 interface QuillEditorProps {
   value: string;
@@ -11,11 +12,6 @@ interface QuillEditorProps {
   minHeight?: number;
   disabled?: boolean;
 }
-
-const QuillNoSSRWrapper = dynamic(() => import("react-quill"), {
-  ssr: false,
-  loading: () => <div>Загрузка редактора…</div>
-});
 
 export const QuillEditor: React.FC<QuillEditorProps> = ({
   value,
@@ -27,27 +23,29 @@ export const QuillEditor: React.FC<QuillEditorProps> = ({
 }) => {
   return (
     <div className={disabled ? "opacity-60 pointer-events-none" : ""}>
-      <QuillNoSSRWrapper
-        theme="snow"
-        value={value}
-        onChange={onChange}
-        readOnly={readOnly}
-        placeholder={placeholder}
-        style={{ minHeight }}
-        modules={{
-          toolbar: readOnly || disabled
-            ? false
-            : [
-                [{ header: [1, 2, false] }],
-                ["bold", "italic", "underline", "strike"],
-                [{ color: [] }, { background: [] }],
-                ["link", "blockquote", "code-block"],
-                [{ list: "ordered" }, { list: "bullet" }],
-                [{ align: [] }],
-                ["clean"],
-              ],
-        }}
-      />
+      <Suspense fallback={<div>Загрузка редактора…</div>}>
+        <ReactQuill
+          theme="snow"
+          value={value}
+          onChange={onChange}
+          readOnly={readOnly}
+          placeholder={placeholder}
+          style={{ minHeight }}
+          modules={{
+            toolbar: readOnly || disabled
+              ? false
+              : [
+                  [{ header: [1, 2, false] }],
+                  ["bold", "italic", "underline", "strike"],
+                  [{ color: [] }, { background: [] }],
+                  ["link", "blockquote", "code-block"],
+                  [{ list: "ordered" }, { list: "bullet" }],
+                  [{ align: [] }],
+                  ["clean"],
+                ],
+          }}
+        />
+      </Suspense>
     </div>
   );
 };
