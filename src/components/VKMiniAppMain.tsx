@@ -9,7 +9,8 @@ export const VKMiniAppMain: React.FC = () => {
 
   // Максимально детальная диагностика VK окружения
   useEffect(() => {
-    console.log("=== VK MINI APP MAIN MOUNTED ===");
+    console.log("🎯 VK MINI APP MAIN COMPONENT MOUNTED");
+    console.log("Время монтирования:", new Date().toISOString());
     setMounted(true);
     
     // Немедленная проверка всех VK объектов
@@ -56,14 +57,14 @@ export const VKMiniAppMain: React.FC = () => {
       }
     };
     
-    console.log("ПОЛНАЯ VK ДИАГНОСТИКА:", vkDetection);
+    console.log("📊 ПОЛНАЯ VK ДИАГНОСТИКА:", vkDetection);
     setDetectionResults(vkDetection);
     
     // Проверка доступа к родительскому окну
     try {
-      console.log("Parent window location:", window.parent.location.href);
+      console.log("🌐 Parent window location:", window.parent.location.href);
     } catch (e) {
-      console.log("Parent window access denied:", e.message);
+      console.log("🚫 Parent window access denied:", e.message);
     }
     
     // Попытка обращения к VK Bridge через разные пути
@@ -78,15 +79,15 @@ export const VKMiniAppMain: React.FC = () => {
     bridgePaths.forEach((pathFn, index) => {
       try {
         const result = pathFn();
-        console.log(`VK Bridge path ${index}:`, result);
+        console.log(`🔍 VK Bridge path ${index}:`, result);
       } catch (e) {
-        console.log(`VK Bridge path ${index} error:`, e.message);
+        console.log(`❌ VK Bridge path ${index} error:`, e.message);
       }
     });
     
     // Слушаем все сообщения
     const messageHandler = (event: MessageEvent) => {
-      console.log("RECEIVED MESSAGE:", {
+      console.log("📥 RECEIVED MESSAGE:", {
         origin: event.origin,
         data: event.data,
         source: event.source,
@@ -100,16 +101,17 @@ export const VKMiniAppMain: React.FC = () => {
     try {
       window.parent.postMessage({
         type: 'vk_test_message',
-        data: 'Hello from VK Mini App'
+        data: 'Hello from VK Mini App',
+        timestamp: Date.now()
       }, '*');
-      console.log("Test message sent to parent");
+      console.log("📤 Test message sent to parent");
     } catch (e) {
-      console.log("Failed to send test message:", e.message);
+      console.log("❌ Failed to send test message:", e.message);
     }
     
     return () => {
       window.removeEventListener('message', messageHandler);
-      console.log("VK Mini App Main unmounted");
+      console.log("🔄 VK Mini App Main unmounted");
     };
   }, []);
 
@@ -117,7 +119,7 @@ export const VKMiniAppMain: React.FC = () => {
 
   // Логируем изменения состояния VK Bridge
   useEffect(() => {
-    console.log("VK BRIDGE STATE CHANGE:", {
+    console.log("🔄 VK BRIDGE STATE CHANGE:", {
       isAvailable,
       hasUser: !!user,
       hasError: !!error,
@@ -128,24 +130,30 @@ export const VKMiniAppMain: React.FC = () => {
 
   if (!mounted) {
     return (
-      <div style={{ 
-        minHeight: '100vh', 
-        background: 'red', 
-        color: 'white', 
-        padding: '20px',
-        fontSize: '18px' 
-      }}>
-        LOADING VK MINI APP...
+      <div 
+        style={{ 
+          minHeight: '100vh', 
+          background: 'red', 
+          color: 'white', 
+          padding: '20px',
+          fontSize: '18px' 
+        }}
+        data-app-mounted="false"
+      >
+        🔄 LOADING VK MINI APP... {new Date().toLocaleTimeString()}
       </div>
     );
   }
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-      padding: '16px'
-    }}>
+    <div 
+      style={{ 
+        minHeight: '100vh', 
+        background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+        padding: '16px'
+      }}
+      data-app-mounted="true"
+    >
       {/* Статус индикатор */}
       <div style={{
         position: 'fixed',
@@ -159,6 +167,24 @@ export const VKMiniAppMain: React.FC = () => {
         zIndex: 1000
       }}>
         ✅ VK APP LOADED - {new Date().toLocaleTimeString()}
+      </div>
+
+      {/* Экстренная диагностика для отладки */}
+      <div style={{
+        position: 'fixed',
+        top: '10px',
+        right: '10px',
+        background: 'blue',
+        color: 'white',
+        padding: '8px',
+        borderRadius: '4px',
+        fontSize: '10px',
+        zIndex: 1000,
+        maxWidth: '200px'
+      }}>
+        <div>UA: {navigator.userAgent.includes('VK') ? '✅VK' : '❌'}</div>
+        <div>Bridge: {window.vkBridge ? '✅' : '❌'}</div>
+        <div>Iframe: {window !== window.top ? '✅' : '❌'}</div>
       </div>
 
       <div style={{
