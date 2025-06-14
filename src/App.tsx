@@ -1,35 +1,38 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { TelegramProvider } from "@/components/TelegramProvider";
 import { HomePage } from "@/pages/HomePage";
 import { DruidPage } from "@/pages/DruidPage";
 import { AdminPage } from "@/pages/AdminPage";
 import NotFound from "./pages/NotFound";
+import VKMiniAppPage from "@/pages/VKMiniAppPage";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <TelegramProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/druid" element={<DruidPage />} />
-            <Route path="/Druid" element={<DruidPage />} />
-            <Route path="/admin" element={<AdminPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TelegramProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <TelegramProvider>
+          <Toaster />
+          <Sonner />
+          <Router>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/druid" element={<DruidPage />} />
+              <Route path="/Druid" element={<DruidPage />} />
+              <Route path="/admin" element={<AdminPage />} />
+              <Route path="/vk-mini-app" element={<VKMiniAppPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Router>
+        </TelegramProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;
