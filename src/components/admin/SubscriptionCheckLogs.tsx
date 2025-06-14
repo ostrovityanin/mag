@@ -49,9 +49,13 @@ export const SubscriptionCheckLogs: React.FC<{ appCode?: string }> = ({ appCode 
               {allChannels.map(ch =>
                 <TableCell key={ch} className="text-center">
                   {log.channel_check_results[ch] === true ? (
-                    <BadgeCheck className="inline h-5 w-5 text-green-600" title="Подписан"/>
+                    <span title="Подписан">
+                      <BadgeCheck className="inline h-5 w-5 text-green-600" />
+                    </span>
                   ) : (
-                    <XCircle className="inline h-5 w-5 text-red-500" title="Не подписан"/>
+                    <span title="Не подписан">
+                      <XCircle className="inline h-5 w-5 text-red-500" />
+                    </span>
                   )}
                 </TableCell>
               )}

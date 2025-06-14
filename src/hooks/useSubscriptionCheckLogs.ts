@@ -27,7 +27,13 @@ export function useSubscriptionCheckLogs(appCode?: string, limit: number = 50) {
       }
       const { data, error } = await query;
       if (error) throw error;
-      return data || [];
+      // Приводим channel_check_results явно к типу объекта с boolean
+      return (data || []).map(row => ({
+        ...row,
+        channel_check_results: typeof row.channel_check_results === 'object' && row.channel_check_results !== null
+          ? row.channel_check_results as Record<string, boolean>
+          : {}
+      }));
     },
   });
 }
