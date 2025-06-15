@@ -30,18 +30,24 @@ export const SubscribeScreen: React.FC<SubscribeScreenProps> = ({
   onOpenChannel,
 }) => {
   const getChannelUrl = (channel: { chat_id: string; channel_name?: string; invite_link?: string }) => {
-    // Если есть invite_link, используем его (для приватных каналов)
-    if (channel.invite_link) {
+    console.log('Обрабатываем канал:', channel);
+    
+    // ПРИОРИТЕТ 1: Если есть invite_link, всегда используем его
+    if (channel.invite_link && channel.invite_link.trim() !== '') {
+      console.log('Используем invite_link:', channel.invite_link);
       return channel.invite_link;
     }
     
-    // Если есть channel_name (username), формируем публичную ссылку
+    // ПРИОРИТЕТ 2: Если есть channel_name (username) и это не chat_id (не начинается с -)
     if (channel.channel_name && !channel.channel_name.startsWith('-')) {
       const username = channel.channel_name.replace('@', '');
-      return `https://t.me/${username}`;
+      const publicUrl = `https://t.me/${username}`;
+      console.log('Используем публичную ссылку:', publicUrl);
+      return publicUrl;
     }
     
-    // Для случаев, когда нет ни invite_link, ни username
+    // ПРИОРИТЕТ 3: Если ничего не подходит
+    console.log('Нет подходящей ссылки для канала:', channel);
     return '#';
   };
 
@@ -72,12 +78,26 @@ export const SubscribeScreen: React.FC<SubscribeScreenProps> = ({
                 
                 return (
                   <div key={channel.chat_id} className="flex items-center justify-between p-2 bg-white rounded border">
-                    <span className="text-sm font-medium">
-                      {channel.channel_name || `Канал ${index + 1}`}
-                    </span>
+                    <div className="flex-1">
+                      <span className="text-sm font-medium block">
+                        {channel.channel_name || `Канал ${index + 1}`}
+                      </span>
+                      {/* Добавляем отладочную информацию */}
+                      <span className="text-xs text-gray-400 block">
+                        Chat ID: {channel.chat_id}
+                      </span>
+                      {channel.invite_link && (
+                        <span className="text-xs text-green-600 block">
+                          Invite: {channel.invite_link.substring(0, 30)}...
+                        </span>
+                      )}
+                    </div>
                     {isValidUrl ? (
                       <Button 
-                        onClick={() => onOpenChannel(channelUrl)}
+                        onClick={() => {
+                          console.log('Открываем ссылку:', channelUrl);
+                          onOpenChannel(channelUrl);
+                        }}
                         size="sm"
                         className="bg-yellow-600 hover:bg-yellow-700"
                       >
