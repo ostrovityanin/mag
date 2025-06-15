@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.telegram-widget-auth]
 verify_jwt = false
+
+[functions.get-telegram-bot-username]
+verify_jwt = false
