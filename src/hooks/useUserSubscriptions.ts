@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTelegramContext } from '@/components/TelegramProvider';
@@ -19,14 +18,14 @@ interface SubscriptionResult {
 }
 
 export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
-  const { authenticatedUser, isAuthenticated } = useTelegramContext();
+  const { authenticatedUser, isAuthenticated, authTimestamp } = useTelegramContext();
 
   return useQuery<SubscriptionResult, Error>({
-    queryKey: ['user-subscriptions', authenticatedUser?.id, appCode],
+    queryKey: ['user-subscriptions', authenticatedUser?.id, appCode, authTimestamp],
     enabled: isAuthenticated && !!authenticatedUser,
-    staleTime: 30000,
-    refetchOnMount: true,
-    refetchOnWindowFocus: false,
+    staleTime: 0, // Данные считаются устаревшими немедленно
+    refetchOnMount: 'always', // Всегда запрашивать при монтировании компонента
+    refetchOnWindowFocus: true, // Запрашивать при фокусе на окне
     queryFn: async () => {
       if (!authenticatedUser) {
         throw new Error('Пользователь не аутентифицирован');

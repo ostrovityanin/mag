@@ -1,5 +1,4 @@
-
-import React, { createContext, useContext, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
 import { useTelegram } from '@/hooks/useTelegram';
 import { useTelegramAuth } from '@/hooks/useTelegramAuth';
 import { TelegramUser, TelegramWebApp } from '@/types/telegram';
@@ -11,6 +10,7 @@ interface TelegramContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   authError: string | null;
+  authTimestamp: number | null; // Временная метка последней аутентификации
   showMainButton: (text: string, onClick: () => void) => void;
   hideMainButton: () => void;
   showBackButton: (onClick: () => void) => void;
@@ -35,6 +35,7 @@ export const TelegramProvider: React.FC<{ children: ReactNode }> = ({ children }
     authenticateUser, 
     logout 
   } = useTelegramAuth();
+  const [authTimestamp, setAuthTimestamp] = useState<number | null>(null);
 
   // Автоматически аутентифицируем пользователя, когда данные Telegram WebApp загружены
   useEffect(() => {
@@ -56,6 +57,18 @@ export const TelegramProvider: React.FC<{ children: ReactNode }> = ({ children }
         }
     }
   }, [telegramData.webApp, telegramData.isLoading, authLoading, authenticatedUser, authenticateUser]);
+
+  // Обновляем временную метку при каждом изменении статуса аутентификации
+  useEffect(() => {
+    if (authenticatedUser) {
+      const newTimestamp = Date.now();
+      console.log(`=== АУТЕНТИФИКАЦИЯ ОБНОВЛЕНА, НОВАЯ ВРЕМЕННАЯ МЕТКА: ${newTimestamp} ===`, authenticatedUser);
+      setAuthTimestamp(newTimestamp);
+    } else {
+      console.log('=== ПОЛЬЗОВАТЕЛЬ НЕ АУТЕНТИФИЦИРОВАН, СБРОС ВРЕМЕННОЙ МЕТКИ ===');
+      setAuthTimestamp(null);
+    }
+  }, [authenticatedUser]);
 
   // Детальное логирование состояния каждые 2 секунды для отладки
   useEffect(() => {
@@ -81,6 +94,7 @@ export const TelegramProvider: React.FC<{ children: ReactNode }> = ({ children }
     isLoading: telegramData.isLoading || authLoading,
     isAuthenticated: !!authenticatedUser,
     authError,
+    authTimestamp, // Передаем метку в контекст
     logout,
     authenticateUser,
   };
