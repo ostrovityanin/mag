@@ -1,7 +1,6 @@
 import React from 'react';
 import { useTelegramContext } from '@/components/TelegramProvider';
 import { useUserSubscriptions } from '@/hooks/useUserSubscriptions';
-import SimpleTelegramAuth from '@/components/SimpleTelegramAuth';
 import { UserInfoHeader } from '@/components/UserInfoHeader';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, TreePine, RefreshCw } from 'lucide-react';
@@ -9,6 +8,7 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { DruidHoroscopeCalculator } from "@/components/DruidHoroscopeCalculator";
+import { WelcomeScreen } from "@/components/WelcomeScreen";
 
 export const DruidPage: React.FC = () => {
   // Хак для "демо" — определяем, включён ли демо-режим по query-параметру ?demo=1
@@ -40,8 +40,9 @@ export const DruidPage: React.FC = () => {
   const currentAuthenticatedUser = isDemo ? DEMO_USER : authenticatedUser;
   const currentSubscriptionCheck = isDemo ? DEMO_SUBSCRIPTION : subscriptionCheck;
 
+  // ЛОГИКА: если не аутентифицирован — показываем WelcomeScreen, как на главной
   if (!currentIsAuthenticated) {
-    return <SimpleTelegramAuth />;
+    return <WelcomeScreen onGetStarted={() => {}} />;
   }
 
   if (currentSubscriptionCheck.isLoading) {
