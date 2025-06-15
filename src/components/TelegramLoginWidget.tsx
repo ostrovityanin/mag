@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTelegramContext } from '@/components/TelegramProvider';
@@ -37,6 +36,15 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
   console.log('botUsername:', botUsername);
   console.log('widgetKey:', widgetKey);
 
+  // --- ДОБАВЛЕНО: сбрасывать widgetKey при изменении isAuthenticated на false (например после logout)
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setWidgetKey(k => k + 1);
+    }
+    // Не нужен return — это только для инициализации.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
   useEffect(() => {
     // Если пользователь уже аутентифицирован, не показываем виджет
     if (isAuthenticated) {
@@ -44,36 +52,24 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
       return;
     }
 
-    console.log('=== ЗАГРУЗКА TELEGRAM WIDGET ===');
     setError(null);
     setScriptLoaded(false);
 
-    // Очищаем контейнер кнопки
     if (containerRef.current) {
       containerRef.current.innerHTML = '';
     }
-
-    // Удаляем предыдущий скрипт если был
     if (scriptRef.current && scriptRef.current.parentNode) {
       scriptRef.current.parentNode.removeChild(scriptRef.current);
       scriptRef.current = null;
       console.log('Удалён старый <script> Telegram Widget');
     }
 
-    // Создаем уникальный callback для этого рендера
     const callbackName = `telegramLoginCallback_${Date.now()}_${widgetKey}`;
-    console.log('Создаем callback:', callbackName);
-
     (window as any)[callbackName] = async (user: any) => {
-      console.log('=== TELEGRAM LOGIN WIDGET CALLBACK ===');
-      console.log('Получены данные пользователя:', user);
-
       try {
-        // Проверяем данные пользователя
         if (!user || !user.id || !user.hash) {
           throw new Error('Недопустимые данные пользователя от Telegram');
         }
-
         const success = await authenticateUser(user);
         if (success) {
           onAuth(user);
@@ -81,17 +77,14 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
           throw new Error('Ошибка аутентификации пользователя');
         }
       } catch (error) {
-        console.error('Ошибка в Telegram Login Widget:', error);
         setError(error instanceof Error ? error.message : 'Неизвестная ошибка');
       } finally {
-        // Очищаем функцию из глобального scope
         if ((window as any)[callbackName]) {
           delete (window as any)[callbackName];
         }
       }
     };
 
-    // Создаём скрипт для виджета
     const script = document.createElement('script');
     script.async = true;
     script.src = 'https://telegram.org/js/telegram-widget.js?22';
@@ -104,42 +97,43 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
     script.setAttribute('data-onauth', callbackName);
 
     script.onload = () => {
-      console.log('Скрипт Telegram Widget загружен успешно');
       setScriptLoaded(true);
     };
 
     script.onerror = () => {
-      console.error('Ошибка загрузки скрипта Telegram Widget');
       setError('Не удалось загрузить Telegram Widget');
     };
 
-    // Добавляем скрипт в контейнер и сохраняем ref
     if (containerRef.current) {
       containerRef.current.appendChild(script);
       scriptRef.current = script;
-      console.log('Скрипт добавлен в контейнер');
     }
 
-    // Очистка при размонтировании или при смене любых props
     return () => {
-      // Очищаем контейнер
       if (containerRef.current) {
         containerRef.current.innerHTML = '';
       }
-      // Очищаем callback
       if ((window as any)[callbackName]) {
         delete (window as any)[callbackName];
       }
-      // Удаляем предыдущий скрипт
       if (scriptRef.current && scriptRef.current.parentNode) {
         scriptRef.current.parentNode.removeChild(scriptRef.current);
         scriptRef.current = null;
-        console.log('Удалён <script> Telegram Widget при cleanup');
       }
     };
-  }, [botUsername, buttonSize, cornerRadius, requestAccess, usePic, lang, onAuth, authenticateUser, isAuthenticated, widgetKey]);
+  }, [
+    botUsername,
+    buttonSize,
+    cornerRadius,
+    requestAccess,
+    usePic,
+    lang,
+    onAuth,
+    authenticateUser,
+    isAuthenticated,
+    widgetKey
+  ]);
 
-  // Если пользователь уже аутентифицирован, не показываем виджет
   if (isAuthenticated) {
     return null;
   }
