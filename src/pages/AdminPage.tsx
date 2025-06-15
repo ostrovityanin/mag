@@ -14,6 +14,7 @@ import { SubscriptionCheckLogs } from '@/components/admin/SubscriptionCheckLogs'
 import { AdminDruidSigns } from "@/components/admin/AdminDruidSigns";
 import { UploadDruidTextsPDF } from "@/components/admin/UploadDruidTextsPDF";
 import { ManualDruidSignsEditor } from "@/components/admin/ManualDruidSignsEditor";
+import { SimulateSubscriptionCheck } from "@/components/admin/SimulateSubscriptionCheck";
 
 export const AdminPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('channels');
@@ -117,7 +118,7 @@ export const AdminPage: React.FC = () => {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7 bg-white">
+          <TabsList className="grid w-full grid-cols-8 bg-white">
             <TabsTrigger value="channels" className="flex items-center space-x-2">
               <Settings className="h-4 w-4" />
               <span>Каналы</span>
@@ -143,6 +144,9 @@ export const AdminPage: React.FC = () => {
             </TabsTrigger>
             <TabsTrigger value="druid-signs" className="flex items-center space-x-2">
               <span className="font-semibold">Друидские знаки</span>
+            </TabsTrigger>
+            <TabsTrigger value="simulate-check" className="flex items-center space-x-2">
+              <span className="font-semibold text-blue-700">Имитация проверки</span>
             </TabsTrigger>
           </TabsList>
 
@@ -193,6 +197,10 @@ export const AdminPage: React.FC = () => {
             <UploadDruidTextsPDF />
             <ManualDruidSignsEditor />
             <AdminDruidSigns />
+          </TabsContent>
+
+          <TabsContent value="simulate-check">
+            <SimulateSubscriptionCheck />
           </TabsContent>
         </Tabs>
       </div>
