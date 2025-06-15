@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { WelcomeScreen } from '@/components/WelcomeScreen';
 import { ChannelRequirement } from '@/components/ChannelRequirement';
@@ -27,7 +26,7 @@ export const HomePage: React.FC = () => {
     refetch
   } = useUserSubscriptions();
 
-  const { data: channels = [], isLoading: channelsLoading } = useChannels();
+  const { isLoading: channelsLoading } = useChannels();
   const queryClient = useQueryClient();
   const [checkingChannelId, setCheckingChannelId] = useState<string | null>(null);
 
@@ -123,29 +122,13 @@ export const HomePage: React.FC = () => {
   // Логика проверки подписок
   const hasUnsubscribedChannels = subscriptionData?.hasUnsubscribedChannels ?? false;
   const missingChannels = subscriptionData?.missingChannels ?? [];
-
-  // Собираем объект подписок
-  let subscriptionsById: Record<string, boolean> = {};
-  if (subscriptionData?.debugInfo?.channels && subscriptionData?.debugInfo?.checkResult?.subscriptions) {
-    const rawSubs = subscriptionData.debugInfo.checkResult.subscriptions;
-    for (const channel of subscriptionData.debugInfo.channels) {
-      let isTrue = false;
-      if (channel.chat_id && rawSubs[channel.chat_id] === true) isTrue = true;
-      if (!isTrue && channel.username && rawSubs[channel.username] === true) isTrue = true;
-      if (!isTrue && rawSubs[channel.id] === true) isTrue = true;
-      subscriptionsById[channel.id] = isTrue;
-    }
-  }
+  const subscriptionsById = subscriptionData?.subscriptionsById ?? {};
 
   // Показываем требования подписки, если есть неподтвержденные каналы
   if (hasUnsubscribedChannels) {
-    const missingChannelIds = new Set(missingChannels.map(ch => ch.id));
-    const requiredChannels = channels.filter(c => c.required);
-    const missingRequiredChannels = requiredChannels.filter(c => missingChannelIds.has(c.id));
-
     return (
       <ChannelRequirement 
-        channels={missingRequiredChannels} 
+        channels={missingChannels} 
         subscriptions={subscriptionsById}
         onCheckSubscription={handleCheckSubscription}
         isChecking={checkingChannelId}

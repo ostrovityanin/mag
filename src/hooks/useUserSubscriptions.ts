@@ -1,17 +1,20 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTelegramContext } from '@/components/TelegramProvider';
 
 interface Channel {
   id: string;
-  username: string | null;
+  username: string;
   chat_id: string | null;
   name: string;
+  invite_link: string | null;
 }
 
 interface SubscriptionResult {
   hasUnsubscribedChannels: boolean;
   missingChannels: Channel[];
+  subscriptionsById: Record<string, boolean>;
   isLoading: boolean;
   error: string | null;
   debugInfo?: any;
@@ -54,7 +57,8 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
               id,
               username,
               chat_id,
-              name
+              name,
+              invite_link
             )
           `)
           .eq('app', appCode)
@@ -72,6 +76,7 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
           return {
             hasUnsubscribedChannels: false,
             missingChannels: [],
+            subscriptionsById: {},
             isLoading: false,
             error: null,
             debugInfo,
@@ -85,7 +90,8 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
             id: c.id,
             username: c.username,
             chat_id: c.chat_id,
-            name: c.name
+            name: c.name,
+            invite_link: c.invite_link
           }));
 
         debugInfo.channels = channels;
@@ -95,6 +101,7 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
           return {
             hasUnsubscribedChannels: false,
             missingChannels: [],
+            subscriptionsById: {},
             isLoading: false,
             error: null,
             debugInfo,
@@ -127,19 +134,39 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
 
         const subscriptions = checkResult?.subscriptions || {};
         const missingChannels: Channel[] = [];
+        const subscriptionsById: Record<string, boolean> = {};
 
         channels.forEach(channel => {
-          const identifier = channel.chat_id || channel.username!;
-          const isSubscribed = subscriptions[identifier] === true;
+          const username = channel.username;
+          const chatId = channel.chat_id;
+
+          let isSubscribed = false;
+          // Проверяем по ID чата
+          if (chatId && subscriptions[chatId] === true) {
+            isSubscribed = true;
+          }
+          // Проверяем по имени пользователя (например, 'mychannel')
+          if (!isSubscribed && username && subscriptions[username] === true) {
+            isSubscribed = true;
+          }
+          // Проверяем по имени пользователя с @ (например, '@mychannel')
+          if (!isSubscribed && username && subscriptions[`@${username}`] === true) {
+            isSubscribed = true;
+          }
+          
+          subscriptionsById[channel.id] = isSubscribed;
+
           if (!isSubscribed) {
             missingChannels.push(channel);
           }
         });
         debugInfo.missingChannels = missingChannels;
+        debugInfo.subscriptionsById = subscriptionsById;
 
-        const result = {
+        const result: SubscriptionResult = {
           hasUnsubscribedChannels: missingChannels.length > 0,
           missingChannels,
+          subscriptionsById,
           isLoading: false,
           error: null,
           debugInfo,
@@ -152,6 +179,7 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
         return {
           hasUnsubscribedChannels: true,
           missingChannels: [],
+          subscriptionsById: {},
           isLoading: false,
           error: error instanceof Error ? error.message : 'Неизвестная ошибка',
           debugInfo,

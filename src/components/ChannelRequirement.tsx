@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -72,8 +71,8 @@ export const ChannelRequirement: React.FC<ChannelRequirementProps> = ({
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Badge variant={channel.channel_type === 'public' ? 'default' : 'secondary'}>
-                      {channel.channel_type === 'public' ? 'Публичный' : 'Приватный'}
+                    <Badge variant="outline">
+                      Канал
                     </Badge>
                     {!isSubscribed && (
                       <Button
