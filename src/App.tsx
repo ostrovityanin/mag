@@ -7,6 +7,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { TelegramProvider } from "@/components/TelegramProvider";
 import { HomePage } from "@/pages/HomePage";
 import { DruidPage } from "@/pages/DruidPage";
+import { DruidEntryPage } from "@/pages/DruidEntryPage";
+import { DruidAppPage } from "@/pages/DruidAppPage";
 import { AdminPage } from "@/pages/AdminPage";
 import NotFound from "./pages/NotFound";
 
@@ -21,7 +23,8 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/druid" element={<DruidPage />} />
+            <Route path="/druid" element={<DruidEntryPage />} />
+            <Route path="/druid/app" element={<DruidAppPage />} />
             <Route path="/Druid" element={<DruidPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="*" element={<NotFound />} />
