@@ -6,6 +6,7 @@ interface SubscriptionCheck {
   chat_id: string;
   status: string;
   channel_name?: string;
+  invite_link?: string;
 }
 
 interface VerificationResult {
@@ -20,12 +21,14 @@ interface VerificationResult {
 }
 
 /**
- * Хук для проверки подписок через бэкенд и Bot API
+ * Хук для проверки подписок с показом только первых двух неподписанных каналов
  */
 export const useSubscriptionVerification = (webApp: TelegramWebApp | null) => {
   const [result, setResult] = useState<VerificationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [currentChannel, setCurrentChannel] = useState<string>('');
 
   const verifySubscriptions = useCallback(async (): Promise<VerificationResult | null> => {
     if (!webApp?.initData) {
@@ -35,9 +38,14 @@ export const useSubscriptionVerification = (webApp: TelegramWebApp | null) => {
 
     setIsLoading(true);
     setError(null);
+    setProgress(0);
+    setCurrentChannel('Инициализация...');
 
     try {
       console.log('Начинаем проверку подписок через бэкенд...');
+      
+      setProgress(20);
+      setCurrentChannel('Получение списка каналов...');
       
       // Вызываем edge-функцию для проверки подписок
       const response = await fetch('https://shytgcmkvycrpzhlsfbc.supabase.co/functions/v1/telegram-subscription-verify', {
@@ -48,9 +56,12 @@ export const useSubscriptionVerification = (webApp: TelegramWebApp | null) => {
         },
         body: JSON.stringify({
           initData: webApp.initData,
-          app: 'druid' // указываем, для какого приложения проверяем
+          app: 'druid'
         }),
       });
+
+      setProgress(50);
+      setCurrentChannel('Проверка подписок...');
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -59,8 +70,32 @@ export const useSubscriptionVerification = (webApp: TelegramWebApp | null) => {
       const verificationResult: VerificationResult = await response.json();
       console.log('Результат проверки подписок:', verificationResult);
 
-      setResult(verificationResult);
-      return verificationResult;
+      setProgress(80);
+      setCurrentChannel('Обработка результатов...');
+
+      // Фильтруем только неподписанные каналы и берём первые два
+      const unsubscribedChannels = verificationResult.checks?.filter(
+        c => !['member', 'administrator', 'creator'].includes(c.status)
+      ) || [];
+
+      // Берём только первые два неподписанных канала
+      const limitedUnsubscribedChannels = unsubscribedChannels.slice(0, 2);
+
+      const finalResult: VerificationResult = {
+        ...verificationResult,
+        checks: limitedUnsubscribedChannels,
+        ok: limitedUnsubscribedChannels.length === 0 // Доступ разрешён, если нет неподписанных каналов
+      };
+
+      setProgress(100);
+      setCurrentChannel('Завершение...');
+      
+      // Небольшая задержка для плавности анимации
+      setTimeout(() => {
+        setResult(finalResult);
+      }, 500);
+
+      return finalResult;
 
     } catch (err: any) {
       const errorMessage = err.message || 'Ошибка проверки подписок';
@@ -68,7 +103,11 @@ export const useSubscriptionVerification = (webApp: TelegramWebApp | null) => {
       setError(errorMessage);
       return null;
     } finally {
-      setIsLoading(false);
+      setTimeout(() => {
+        setIsLoading(false);
+        setProgress(0);
+        setCurrentChannel('');
+      }, 600);
     }
   }, [webApp]);
 
@@ -101,7 +140,9 @@ export const useSubscriptionVerification = (webApp: TelegramWebApp | null) => {
     isLoading,
     error,
     refresh,
+    progress,
+    currentChannel,
     isAllowed: result?.ok || false,
-    missingChannels: result?.checks?.filter(c => !['member', 'administrator', 'creator'].includes(c.status)) || [],
+    missingChannels: result?.checks || [],
   };
 };

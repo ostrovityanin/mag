@@ -4,11 +4,11 @@ import { useTelegramContext } from '@/components/TelegramProvider';
 import { useSubscriptionVerification } from '@/hooks/useSubscriptionVerification';
 import { UserInfoHeader } from '@/components/UserInfoHeader';
 import { AlertTriangle, TreePine } from 'lucide-react';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Card, CardContent } from '@/components/ui/card';
 import { DruidHoroscopeCalculator } from "@/components/DruidHoroscopeCalculator";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { SubscribeScreen } from "@/components/SubscribeScreen";
+import { MysticalLoadingScreen } from "@/components/MysticalLoadingScreen";
 
 export const DruidPage: React.FC = () => {
   const { webApp, user, isLoading: webAppLoading, error: webAppError, openTelegramLink } = useTelegramContext();
@@ -17,6 +17,8 @@ export const DruidPage: React.FC = () => {
     isLoading: verificationLoading, 
     error: verificationError, 
     refresh,
+    progress,
+    currentChannel,
     isAllowed,
     missingChannels 
   } = useSubscriptionVerification(webApp);
@@ -31,15 +33,13 @@ export const DruidPage: React.FC = () => {
     return <WelcomeScreen onGetStarted={() => {}} />;
   }
 
-  // Загрузка проверки подписок
-  if (verificationLoading && !result) {
+  // Загрузка проверки подписок с мистическим прогресс-баром
+  if (verificationLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center">
-        <div className="text-center">
-          <LoadingSpinner size="lg" />
-          <p className="mt-4 text-gray-600 text-lg">Проверяем подписки...</p>
-        </div>
-      </div>
+      <MysticalLoadingScreen 
+        progress={progress}
+        currentChannel={currentChannel}
+      />
     );
   }
 
@@ -64,7 +64,7 @@ export const DruidPage: React.FC = () => {
     );
   }
 
-  // Требуются подписки
+  // Требуются подписки (показываем только первые два канала)
   if (!isAllowed && missingChannels.length > 0) {
     return (
       <SubscribeScreen

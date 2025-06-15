@@ -82,15 +82,6 @@ export const SubscribeScreen: React.FC<SubscribeScreenProps> = ({
                       <span className="text-sm font-medium block">
                         {channel.channel_name || `Канал ${index + 1}`}
                       </span>
-                      {/* Добавляем отладочную информацию */}
-                      <span className="text-xs text-gray-400 block">
-                        Chat ID: {channel.chat_id}
-                      </span>
-                      {channel.invite_link && (
-                        <span className="text-xs text-green-600 block">
-                          Invite: {channel.invite_link.substring(0, 30)}...
-                        </span>
-                      )}
                     </div>
                     {isValidUrl ? (
                       <Button 
@@ -113,6 +104,12 @@ export const SubscribeScreen: React.FC<SubscribeScreenProps> = ({
                 );
               })}
             </div>
+            
+            {missingChannels.length === 2 && (
+              <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-200">
+                💡 Показаны только первые 2 канала. После подписки на них мы проверим остальные.
+              </div>
+            )}
           </div>
 
           <div className="pt-4 border-t">
