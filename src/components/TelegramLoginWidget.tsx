@@ -30,6 +30,7 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
 
   // Держим ref на текущий <script> для корректного удаления
   const scriptRef = useRef<HTMLScriptElement | null>(null);
+  const scriptTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   console.log('=== TelegramLoginWidget RENDER ===');
   console.log('isAuthenticated:', isAuthenticated);
@@ -46,12 +47,7 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
   }, [isAuthenticated]);
 
   useEffect(() => {
-    // Если пользователь уже аутентифицирован, не показываем виджет
-    if (isAuthenticated) {
-      console.log('Пользователь аутентифицирован, скрываем виджет');
-      return;
-    }
-
+    // Сброс состояния перед монтированием
     setError(null);
     setScriptLoaded(false);
 
@@ -62,6 +58,17 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
       scriptRef.current.parentNode.removeChild(scriptRef.current);
       scriptRef.current = null;
       console.log('Удалён старый <script> Telegram Widget');
+    }
+
+    if (isAuthenticated) {
+      // Уже авторизован – не нужен виджет
+      return;
+    }
+
+    // --- ДОП. ЛОГ при отсутствии botUsername ---
+    if (!botUsername) {
+      setError('Не указан botUsername для Telegram Widget. Проверьте настройки в Supabase!');
+      return;
     }
 
     const callbackName = `telegramLoginCallback_${Date.now()}_${widgetKey}`;
@@ -98,11 +105,31 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
 
     script.onload = () => {
       setScriptLoaded(true);
+      if (scriptTimeoutRef.current) clearTimeout(scriptTimeoutRef.current);
     };
 
     script.onerror = () => {
-      setError('Не удалось загрузить Telegram Widget');
+      setScriptLoaded(false);
+      setError(
+        'Не удалось загрузить Telegram Widget: возможно, имя бота указано неверно или Telegram ограничивает доступ для этого бота. Проверьте, что имя бота (botUsername) задано правильно и бот поддерживает Telegram Login Widget.'
+      );
+      if (scriptTimeoutRef.current) clearTimeout(scriptTimeoutRef.current);
     };
+
+    // --- ДОП. таймер: если за 4 сек onload не вызван, выводим ошибку ---
+    scriptTimeoutRef.current = setTimeout(() => {
+      if (!scriptLoaded) {
+        setError(
+          `Telegram Widget не загрузился за 4 секунды. 
+          Возможные причины:
+          - Бот отключён или скрыт (через @BotFather: /setdomain, /setprivacy, /setinline, /setjoingroups)
+          - Имя бота указано с ошибкой: '${botUsername}'
+          - Telegram недоступен из вашей страны или браузер блокирует скрипты с telegram.org
+          
+          Проверьте, что бот '${botUsername}' публичный и Telegram Widget разрешён для входа.`
+        );
+      }
+    }, 4000);
 
     if (containerRef.current) {
       containerRef.current.appendChild(script);
@@ -120,18 +147,13 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
         scriptRef.current.parentNode.removeChild(scriptRef.current);
         scriptRef.current = null;
       }
+      if (scriptTimeoutRef.current) {
+        clearTimeout(scriptTimeoutRef.current);
+      }
     };
   }, [
-    botUsername,
-    buttonSize,
-    cornerRadius,
-    requestAccess,
-    usePic,
-    lang,
-    onAuth,
-    authenticateUser,
-    isAuthenticated,
-    widgetKey
+    botUsername, buttonSize, cornerRadius, requestAccess, usePic, lang, onAuth, authenticateUser,
+    isAuthenticated, widgetKey // перечисляем для коррекности
   ]);
 
   if (isAuthenticated) {
@@ -153,7 +175,7 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
               <AlertCircle className="h-4 w-4" />
               <span className="text-sm font-medium">Ошибка</span>
             </div>
-            <p className="text-xs text-red-600 mt-1">{error}</p>
+            <p className="text-xs text-red-600 mt-1 whitespace-pre-wrap">{error}</p>
           </div>
         )}
 
@@ -163,7 +185,8 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
 
         {!scriptLoaded && !error && (
           <div className="text-center text-xs text-gray-500 mb-2">
-            Загружаем виджет входа...
+            Загружаем виджет входа...<br />
+            (Если ничего не происходит, проверьте настройки вашего Telegram-бота!)
           </div>
         )}
 
