@@ -19,8 +19,16 @@ interface TelegramUserData {
   photo_url?: string;
 }
 
+// Помощник для сброса токена и форсирования перезагрузки (может быть вызван извне)
+export function forceLogoutAndReload() {
+  try {
+    localStorage.removeItem('telegram_session_token');
+  } catch {}
+  window.location.reload();
+}
+
 /**
- * Обновленный хук useTelegramAuth для работы с Telegram WebApp
+ * Обновленный хук useTelegramAuth для работы с Telegram WebApp и мульти-аккаунтами
  */
 export const useTelegramAuth = () => {
   const [currentUser, setCurrentUser] = useState<TelegramUserData | null>(null);
@@ -227,25 +235,58 @@ export const useTelegramAuth = () => {
 
   /**
    * При монтировании проверяем существующую сессию
+   * Теперь выполняется проверка telegram_id из WebApp и сохраненного пользовательского ID для обнаружения смены аккаунта.
    */
   useEffect(() => {
     const checkExistingSession = async () => {
       setIsLoading(true);
       const sessionToken = localStorage.getItem('telegram_session_token');
-      
+      let localSessionUser: TelegramUserData | null = null;
       if (sessionToken) {
-        const userData = await validateSession(sessionToken);
-        if (userData) {
-          setCurrentUser(userData);
+        localSessionUser = await validateSession(sessionToken);
+
+        // Попытка извлечь telegram_id из WebApp (если доступно)
+        let webAppTelegramId: number | null = null;
+        try {
+          if (
+            typeof window !== 'undefined' &&
+            window.Telegram?.WebApp?.initDataUnsafe?.user?.id
+          ) {
+            webAppTelegramId = window.Telegram.WebApp.initDataUnsafe.user.id;
+          }
+        } catch (e) {
+          // Ignore
+        }
+
+        // Если и WebApp, и сессия найдены, сравнить telegram_id
+        if (localSessionUser && webAppTelegramId !== null) {
+          if (localSessionUser.telegram_id !== webAppTelegramId) {
+            // Аккаунт Telegram поменялся! Выходим из сессии и чистим localStorage (только session_token), затем force reload
+            console.warn(
+              '[Telegram WebApp] Обнаружена смена аккаунта!',
+              {
+                previousUserId: localSessionUser.telegram_id,
+                currentUserId: webAppTelegramId,
+              }
+            );
+            await logout();
+            // Перезагрузим страницу принудительно для корректного экрана авторизации
+            window.location.reload();
+            return;
+          }
+        }
+
+        if (localSessionUser) {
+          setCurrentUser(localSessionUser);
           logAdminAction({
             log_type: 'auth_attempt',
             operation: 'session_restored',
             details: {
-              user_id: userData.id,
-              telegram_id: userData.telegram_id,
+              user_id: localSessionUser.id,
+              telegram_id: localSessionUser.telegram_id,
               restored_time: new Date().toISOString(),
             },
-            telegram_user_id: userData.telegram_id,
+            telegram_user_id: localSessionUser.telegram_id,
             success: true,
           });
         }
@@ -254,7 +295,8 @@ export const useTelegramAuth = () => {
     };
 
     checkExistingSession();
-  }, [validateSession, logAdminAction]);
+    // eslint-disable-next-line
+  }, [validateSession, logAdminAction, logout]);
 
   return {
     currentUser,
