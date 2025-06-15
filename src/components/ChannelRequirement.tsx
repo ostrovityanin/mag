@@ -9,7 +9,7 @@ import type { Channel } from '@/hooks/useChannels';
 interface ChannelRequirementProps {
   channels: Channel[];
   subscriptions: Record<string, boolean>;
-  onCheckSubscription: (channelId: string, username: string) => void;
+  onCheckSubscription: (channelId: string) => void;
   isChecking: string | null;
 }
 
@@ -19,44 +19,17 @@ export const ChannelRequirement: React.FC<ChannelRequirementProps> = ({
   onCheckSubscription,
   isChecking
 }) => {
-  const allSubscribed = channels.every(c => subscriptions[c.id]);
+  const allSubscribed = channels.length > 0 && channels.every(c => subscriptions[c.id]);
 
   const handleCheckClick = (channel: Channel) => {
-    console.log('=== КЛИК ПО КНОПКЕ ПРОВЕРИТЬ ===');
-    console.log('Канал:', channel);
-    console.log('ID канала:', channel.id);
-    console.log('Username канала:', channel.username);
-    console.log('Функция onCheckSubscription:', typeof onCheckSubscription);
-    console.log('onCheckSubscription существует:', !!onCheckSubscription);
-    
-    // Добавляем проверку на существование функции
-    if (!onCheckSubscription) {
-      console.error('onCheckSubscription функция не передана!');
-      return;
-    }
-    
-    if (typeof onCheckSubscription !== 'function') {
-      console.error('onCheckSubscription не является функцией, тип:', typeof onCheckSubscription);
-      return;
-    }
-    
+    if (!onCheckSubscription) return;
+    if (typeof onCheckSubscription !== 'function') return;
     try {
-      console.log('Вызываем onCheckSubscription с параметрами:', {
-        channelId: channel.id,
-        username: channel.username
-      });
-      onCheckSubscription(channel.id, channel.username);
-      console.log('onCheckSubscription вызвана успешно');
+      onCheckSubscription(channel.id);
     } catch (error) {
       console.error('Ошибка при вызове onCheckSubscription:', error);
     }
   };
-
-  console.log('=== RENDER CHANNEL REQUIREMENT ===');
-  console.log('Каналы:', channels);
-  console.log('Подписки:', subscriptions);
-  console.log('isChecking:', isChecking);
-  console.log('onCheckSubscription тип:', typeof onCheckSubscription);
 
   return (
     <div className="space-y-4">
@@ -68,14 +41,11 @@ export const ChannelRequirement: React.FC<ChannelRequirementProps> = ({
           Для доступа к премиум функциям подпишитесь на эти каналы:
         </p>
       </div>
-
       <div className="space-y-3">
         {channels.map((channel) => {
           const isSubscribed = subscriptions[channel.id];
           const isCheckingThis = isChecking === channel.id;
-          
-          console.log(`Канал ${channel.id}: isSubscribed=${isSubscribed}, isCheckingThis=${isCheckingThis}`);
-          
+
           return (
             <Card key={channel.id} className="p-4">
               <CardContent className="p-0">
@@ -119,7 +89,6 @@ export const ChannelRequirement: React.FC<ChannelRequirementProps> = ({
                       size="sm"
                       variant={isSubscribed ? "default" : "outline"}
                       onClick={(e) => {
-                        console.log('Button clicked, event:', e);
                         e.preventDefault();
                         e.stopPropagation();
                         handleCheckClick(channel);
@@ -148,7 +117,6 @@ export const ChannelRequirement: React.FC<ChannelRequirementProps> = ({
           );
         })}
       </div>
-
       {allSubscribed && (
         <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
           <Check className="h-6 w-6 text-green-600 mx-auto mb-2" />

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { WelcomeScreen } from '@/components/WelcomeScreen';
 import { ChannelRequirement } from '@/components/ChannelRequirement';
 import { HoroscopeCard } from '@/components/HoroscopeCard';
@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UserInfoHeader } from '@/components/UserInfoHeader';
+import { useQueryClient } from '@tanstack/react-query';
 
 export const HomePage: React.FC = () => {
   const { 
@@ -31,8 +32,31 @@ export const HomePage: React.FC = () => {
 
   const { data: channels = [], isLoading: channelsLoading } = useChannels();
 
+  const queryClient = useQueryClient();
+
+  // Идентификатор текущей проверки (канал, по которому идет процесс)
+  const [checkingChannelId, setCheckingChannelId] = useState<string | null>(null);
+
   const handleGetStarted = () => {
     console.log('Пользователь начал работу с приложением');
+  };
+
+  const handleCheckSubscription = async (channelId: string) => {
+    if (!channelId) return;
+    setCheckingChannelId(channelId);
+    console.log('[ПОВТОРНАЯ ПРОВЕРКА ПОДПИСКИ] channelId:', channelId);
+    // На время для отрисовки спиннера, реальный refetch и инвалидация
+    try {
+      await refetch();
+      await queryClient.invalidateQueries({
+        queryKey: ['user-subscriptions'],
+        refetchType: 'active',
+      });
+      await new Promise(res => setTimeout(res, 350)); // небольшой mid-delay для UX
+    } catch (err) {
+      console.error('Ошибка рефетча:', err);
+    }
+    setCheckingChannelId(null);
   };
 
   // Показываем загрузку, пока инициализируется Telegram или проходит аутентификация
@@ -100,7 +124,7 @@ export const HomePage: React.FC = () => {
     );
   }
 
-  // -------- Новая логика сборки подписок по channel.id ---------
+  // -------- Новая логика сборки подписок по channel.id и строгому соответствию каналам ---------
   const hasUnsubscribedChannels =
     subscriptionData && typeof subscriptionData.hasUnsubscribedChannels === 'boolean'
       ? subscriptionData.hasUnsubscribedChannels
@@ -110,31 +134,40 @@ export const HomePage: React.FC = () => {
       ? subscriptionData.missingChannels
       : [];
 
-  // Собираем объект subscriptions: ключ — id канала, значение — true/false
+  // Собираем объект подписок: ключ — id канала, значение — true/false
   let subscriptionsById: Record<string, boolean> = {};
   if (
     subscriptionData?.debugInfo?.channels &&
     subscriptionData?.debugInfo?.checkResult?.subscriptions
   ) {
     const rawSubs = subscriptionData.debugInfo.checkResult.subscriptions;
-    // debugInfo.channels: [{id, username, chat_id, name}]
+
     for (const channel of subscriptionData.debugInfo.channels) {
-      const key = channel.chat_id || channel.username;
-      // Если вдруг оба ключа есть в subscriptions — отдаем приоритет chat_id
-      if (key && rawSubs.hasOwnProperty(key)) {
-        subscriptionsById[channel.id] = !!rawSubs[key];
-      }
+      // Логика: отдаем true если rawSubs содержит chat_id, username или id как ключ и там явно true
+      let isTrue = false;
+      if (channel.chat_id && rawSubs[channel.chat_id] === true) isTrue = true;
+      if (!isTrue && channel.username && rawSubs[channel.username] === true) isTrue = true;
+      if (!isTrue && rawSubs[channel.id] === true) isTrue = true;
+      subscriptionsById[channel.id] = isTrue;
+      console.log(`[DEBUG SUBS] channel:`, channel, 'subscribed:', isTrue);
     }
   }
 
-  // Если есть неподтвержденные каналы, показываем требования
+  // Отфильтровываем только те каналы, которые действительно требуют подписки (is required)
+  const missingChannelIds = new Set(missingChannels.map(ch => ch.id));
+  const requiredChannels = channels.filter(c => c.required);
+
+  // Показываем требование только если есть неподтвержденные — используем полный список required каналов
   if (hasUnsubscribedChannels) {
+    // КАНАЛЫ ДЛЯ ПРОВЕРКИ — только required и реально пропущенные
+    const missingRequiredChannels = requiredChannels.filter(c => missingChannelIds.has(c.id));
+
     return (
       <ChannelRequirement 
-        channels={channels.filter(c => missingChannels.some(mc => mc.id === c.id))} 
+        channels={missingRequiredChannels} 
         subscriptions={subscriptionsById}
-        onCheckSubscription={() => refetch()}
-        isChecking={null}
+        onCheckSubscription={handleCheckSubscription}
+        isChecking={checkingChannelId}
       />
     );
   }
