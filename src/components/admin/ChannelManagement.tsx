@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useChannels } from '@/hooks/useChannels';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
@@ -137,7 +136,15 @@ export const ChannelManagement: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+    // Не даём отправить форму без username только если тип public
+    if (formData.channel_type === "public" && !formData.username.trim()) {
+      toast({
+        title: "Ошибка",
+        description: "Укажите username для публичного канала.",
+        variant: "destructive"
+      });
+      return;
+    }
     if (editingChannel) {
       updateChannelMutation.mutate({ id: editingChannel.id, data: formData });
     } else {
@@ -162,6 +169,14 @@ export const ChannelManagement: React.FC = () => {
   const handleDelete = (id: string) => {
     if (confirm('Вы уверены, что хотите удалить этот канал?')) {
       deleteChannelMutation.mutate(id);
+    }
+  };
+
+  const handleChannelTypeChange = (value: string) => {
+    if (value === "private") {
+      setFormData({ ...formData, channel_type: value, username: '' });
+    } else {
+      setFormData({ ...formData, channel_type: value });
     }
   };
 
@@ -204,13 +219,20 @@ export const ChannelManagement: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="username">Username (без @)</Label>
+                  <Label htmlFor="username">
+                    Username (без @)
+                  </Label>
                   <Input
                     id="username"
                     value={formData.username}
                     onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                    required
+                    required={formData.channel_type === "public"}
+                    disabled={formData.channel_type === "private"}
+                    placeholder={formData.channel_type === "private" ? "Не требуется для приватных каналов" : ""}
                   />
+                  {formData.channel_type === "private" && (
+                    <span className="text-xs text-gray-500">Не требуется для приватных каналов</span>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="chat_id">Chat ID</Label>
@@ -230,7 +252,7 @@ export const ChannelManagement: React.FC = () => {
                 </div>
                 <div>
                   <Label htmlFor="channel_type">Тип канала</Label>
-                  <Select value={formData.channel_type} onValueChange={(value) => setFormData({ ...formData, channel_type: value })}>
+                  <Select value={formData.channel_type} onValueChange={handleChannelTypeChange}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
