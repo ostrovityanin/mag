@@ -38,3 +38,6 @@ enable_signup = true
 
 [functions.check-telegram-subscription]
 verify_jwt = false
+
+[functions.simple-check-subscription]
+verify_jwt = false
