@@ -19,7 +19,7 @@ interface ChannelFormData {
   username: string;
   chat_id: string;
   invite_link: string;
-  channel_type: string;
+  channel_type: 'public' | 'private';
   required: boolean;
   app_name: string;
 }
@@ -43,11 +43,38 @@ export const ChannelManagement: React.FC = () => {
 
   const createChannelMutation = useMutation({
     mutationFn: async (data: ChannelFormData) => {
-      const { error } = await supabase
-        .from('required_channels')
-        .insert([data]);
+      const { data: channelData, error: channelError } = await supabase
+        .from('channels')
+        .insert({
+          name: data.name,
+          username: data.username,
+          chat_id: data.chat_id || null,
+          invite_link: data.invite_link || null,
+        })
+        .select('id')
+        .single();
+
+      if (channelError) throw channelError;
+      const channelId = channelData.id;
+
+      const appsToInsert = data.app_name === 'both' 
+        ? ['astro_cookie', 'druid_horoscope'] 
+        : [data.app_name];
       
-      if (error) throw error;
+      const appChannelInserts = appsToInsert.map(appName => ({
+        app: appName,
+        channel_id: channelId,
+        required: data.required,
+      }));
+
+      const { error: appChannelError } = await supabase
+        .from('app_channels')
+        .insert(appChannelInserts);
+      
+      if (appChannelError) {
+        await supabase.from('channels').delete().eq('id', channelId);
+        throw appChannelError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
@@ -70,12 +97,32 @@ export const ChannelManagement: React.FC = () => {
 
   const updateChannelMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<ChannelFormData> }) => {
-      const { error } = await supabase
-        .from('required_channels')
-        .update(data)
-        .eq('id', id);
-      
-      if (error) throw error;
+      const channelUpdateData: { [key: string]: any } = {};
+      if (data.name !== undefined) channelUpdateData.name = data.name;
+      if (data.username !== undefined) channelUpdateData.username = data.username;
+      if (data.chat_id !== undefined) channelUpdateData.chat_id = data.chat_id || null;
+      if (data.invite_link !== undefined) channelUpdateData.invite_link = data.invite_link || null;
+
+      if (Object.keys(channelUpdateData).length > 0) {
+        const { error: channelError } = await supabase
+          .from('channels')
+          .update(channelUpdateData)
+          .eq('id', id);
+        if (channelError) throw channelError;
+      }
+
+      const appChannelUpdateData: { [key: string]: any } = {};
+      if (data.required !== undefined) appChannelUpdateData.required = data.required;
+      if (data.app_name && data.app_name !== 'both') appChannelUpdateData.app = data.app_name;
+
+      if (Object.keys(appChannelUpdateData).length > 0) {
+        const { error: appChannelError } = await supabase
+          .from('app_channels')
+          .update(appChannelUpdateData)
+          .eq('channel_id', id)
+          .eq('app', editingChannel!.app_name);
+        if (appChannelError) throw appChannelError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
@@ -97,11 +144,12 @@ export const ChannelManagement: React.FC = () => {
   });
 
   const deleteChannelMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (channel: Channel) => {
       const { error } = await supabase
-        .from('required_channels')
+        .from('app_channels')
         .delete()
-        .eq('id', id);
+        .eq('channel_id', channel.id)
+        .eq('app', channel.app_name);
       
       if (error) throw error;
     },
@@ -156,7 +204,7 @@ export const ChannelManagement: React.FC = () => {
     setEditingChannel(channel);
     setFormData({
       name: channel.name,
-      username: channel.username,
+      username: channel.username || '',
       chat_id: channel.chat_id || '',
       invite_link: channel.invite_link || '',
       channel_type: channel.channel_type,
@@ -166,13 +214,13 @@ export const ChannelManagement: React.FC = () => {
     setIsFormOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Вы уверены, что хотите удалить этот канал?')) {
-      deleteChannelMutation.mutate(id);
+  const handleDelete = (channel: Channel) => {
+    if (confirm('Вы уверены, что хотите удалить связь этого канала с приложением?')) {
+      deleteChannelMutation.mutate(channel);
     }
   };
 
-  const handleChannelTypeChange = (value: string) => {
+  const handleChannelTypeChange = (value: 'public' | 'private') => {
     if (value === "private") {
       setFormData({ ...formData, channel_type: value, username: '' });
     } else {
@@ -252,7 +300,7 @@ export const ChannelManagement: React.FC = () => {
                 </div>
                 <div>
                   <Label htmlFor="channel_type">Тип канала</Label>
-                  <Select value={formData.channel_type} onValueChange={handleChannelTypeChange}>
+                  <Select value={formData.channel_type} onValueChange={(value) => handleChannelTypeChange(value as 'public' | 'private')}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -329,9 +377,9 @@ export const ChannelManagement: React.FC = () => {
             </TableHeader>
             <TableBody>
               {channels.map((channel) => (
-                <TableRow key={channel.id}>
+                <TableRow key={`${channel.id}-${channel.app_name}`}>
                   <TableCell className="font-medium">{channel.name}</TableCell>
-                  <TableCell>@{channel.username}</TableCell>
+                  <TableCell>{channel.username ? `@${channel.username}`: '-'}</TableCell>
                   <TableCell>
                     <Badge variant={channel.channel_type === 'public' ? 'default' : 'secondary'}>
                       {channel.channel_type === 'public' ? 'Публичный' : 'Приватный'}
@@ -366,7 +414,7 @@ export const ChannelManagement: React.FC = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleDelete(channel.id)}
+                        onClick={() => handleDelete(channel)}
                         disabled={deleteChannelMutation.isPending}
                       >
                         <Trash2 className="h-3 w-3" />

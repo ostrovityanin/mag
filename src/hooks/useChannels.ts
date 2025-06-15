@@ -11,6 +11,7 @@ export interface Channel {
   created_at: string;
   required: boolean;
   app_name: string;
+  channel_type: 'public' | 'private';
 }
 
 export const useChannels = (appName?: string) => {
@@ -47,11 +48,15 @@ export const useChannels = (appName?: string) => {
       
       const channels: Channel[] = data
         .filter(ac => ac.channels)
-        .map(ac => ({
-          ...ac.channels!,
-          app_name: ac.app,
-          required: ac.required,
-        }));
+        .map(ac => {
+          const ch = ac.channels!;
+          return ({
+            ...ch,
+            app_name: ac.app,
+            required: ac.required,
+            channel_type: (ch.username && ch.username.trim() !== '') ? 'public' : 'private',
+          });
+        });
       
       return channels.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
     },
