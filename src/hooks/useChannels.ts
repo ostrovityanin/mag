@@ -6,32 +6,54 @@ export interface Channel {
   id: string;
   name: string;
   username: string;
-  chat_id?: string;
-  invite_link?: string;
-  channel_type: string;
+  chat_id: string | null;
+  invite_link: string | null;
+  created_at: string;
   required: boolean;
   app_name: string;
-  created_at: string;
 }
 
 export const useChannels = (appName?: string) => {
   return useQuery({
     queryKey: ['channels', appName],
     queryFn: async (): Promise<Channel[]> => {
-      let query = supabase.from('required_channels').select('*');
+      let query = supabase
+        .from('app_channels')
+        .select(`
+          app,
+          required,
+          channels (
+            id,
+            name,
+            username,
+            chat_id,
+            invite_link,
+            created_at
+          )
+        `);
       
       if (appName) {
-        query = query.or(`app_name.eq.${appName},app_name.eq.both`);
+        query = query.eq('app', appName);
       }
       
-      const { data, error } = await query.order('created_at', { ascending: true });
+      const { data, error } = await query;
       
       if (error) {
         console.error('Error fetching channels:', error);
         throw error;
       }
       
-      return data || [];
+      if (!data) return [];
+      
+      const channels: Channel[] = data
+        .filter(ac => ac.channels)
+        .map(ac => ({
+          ...ac.channels!,
+          app_name: ac.app,
+          required: ac.required,
+        }));
+      
+      return channels.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
     },
   });
 };

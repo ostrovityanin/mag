@@ -3,7 +3,6 @@ import { WelcomeScreen } from '@/components/WelcomeScreen';
 import { ChannelRequirement } from '@/components/ChannelRequirement';
 import { useTelegramContext } from '@/components/TelegramProvider';
 import { useUserSubscriptions } from '@/hooks/useUserSubscriptions';
-import { useChannels } from '@/hooks/useChannels';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertCircle } from 'lucide-react';
@@ -26,7 +25,6 @@ export const HomePage: React.FC = () => {
     refetch
   } = useUserSubscriptions();
 
-  const { isLoading: channelsLoading } = useChannels();
   const queryClient = useQueryClient();
   const [checkingChannelId, setCheckingChannelId] = useState<string | null>(null);
 
@@ -88,7 +86,7 @@ export const HomePage: React.FC = () => {
   }
 
   // Загрузка данных подписок
-  if (subscriptionsLoading || channelsLoading) {
+  if (subscriptionsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
         <div className="text-center">

@@ -1,15 +1,7 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTelegramContext } from '@/components/TelegramProvider';
-
-interface Channel {
-  id: string;
-  username: string;
-  chat_id: string | null;
-  name: string;
-  invite_link: string | null;
-}
+import type { Channel } from './useChannels';
 
 interface SubscriptionResult {
   hasUnsubscribedChannels: boolean;
@@ -52,13 +44,15 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
         const { data: appChannels, error: appChannelsError } = await supabase
           .from('app_channels')
           .select(`
-            channel_id,
+            app,
+            required,
             channels (
               id,
               username,
               chat_id,
               name,
-              invite_link
+              invite_link,
+              created_at
             )
           `)
           .eq('app', appCode)
@@ -84,15 +78,15 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
         }
 
         const channels: Channel[] = appChannels
-          .map(ac => ac.channels)
-          .filter(Boolean)
-          .map(c => ({
-            id: c.id,
-            username: c.username,
-            chat_id: c.chat_id,
-            name: c.name,
-            invite_link: c.invite_link
-          }));
+          .map(ac => {
+            if (!ac.channels) return null;
+            return {
+              ...ac.channels,
+              app_name: ac.app,
+              required: ac.required,
+            };
+          })
+          .filter((c): c is Channel => c !== null);
 
         debugInfo.channels = channels;
 
