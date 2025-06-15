@@ -35,24 +35,28 @@ export const useTelegram = () => {
             setUser(telegramUser);
             console.log('Telegram пользователь инициализирован:', telegramUser);
 
-            // Слушаем событие смены видимости (visibility_changed) — может указывать на смену аккаунта
+            // Слушаем событие смены видимости (visibility_changed)
+            // Исправлено: корректируем вызов onEvent, чтобы избежать ошибки типов TypeScript.
             try {
-              tg.onEvent?.('visibility_changed', () => {
-                // Когда возвращаемся в приложение — сверяем telegram_id из user и сессии
-                if (
-                  typeof window !== 'undefined' &&
-                  window.Telegram?.WebApp?.initDataUnsafe?.user?.id
-                ) {
-                  // Проверим — если не совпадает сессия/аккаунт, форсим логаут
-                  const sessionToken = localStorage.getItem('telegram_session_token');
-                  if (sessionToken) {
-                    // Просто сбрасываем токен — обработка будет дальше в хуке useTelegramAuth
-                    localStorage.removeItem('telegram_session_token');
-                    // Форсируем перезагрузку чтобы юзер увидел экран логина (или просто обновим, если sessionToken и telegram_id были НЕ валидны)
-                    forceLogoutAndReload();
+              const onEvent = (tg as any)?.onEvent;
+              if (typeof onEvent === 'function') {
+                onEvent.call(tg, 'visibility_changed', () => {
+                  // Когда возвращаемся в приложение — сверяем telegram_id из user и сессии
+                  if (
+                    typeof window !== 'undefined' &&
+                    window.Telegram?.WebApp?.initDataUnsafe?.user?.id
+                  ) {
+                    // Проверим — если не совпадает сессия/аккаунт, форсим логаут
+                    const sessionToken = localStorage.getItem('telegram_session_token');
+                    if (sessionToken) {
+                      // Просто сбрасываем токен — обработка будет дальше в хуке useTelegramAuth
+                      localStorage.removeItem('telegram_session_token');
+                      // Форсируем перезагрузку чтобы юзер увидел экран логина (или просто обновим, если sessionToken и telegram_id были НЕ валидны)
+                      forceLogoutAndReload();
+                    }
                   }
-                }
-              });
+                });
+              }
             } catch (e) {
               // Defensive: игнорируем event если не поддерживается
             }
