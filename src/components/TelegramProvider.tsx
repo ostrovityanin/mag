@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, ReactNode } from 'react';
 import { useTelegram } from '@/hooks/useTelegram';
 import { useTelegramAuth } from '@/hooks/useTelegramAuth';
 import { TelegramUser, TelegramWebApp } from '@/types/telegram';
@@ -35,22 +35,6 @@ export const TelegramProvider: React.FC<{ children: ReactNode }> = ({ children }
     authenticateUser, 
     logout 
   } = useTelegramAuth();
-
-  // Упрощенная автоматическая аутентификация пользователя, когда данные Telegram WebApp загружены
-  useEffect(() => {
-    // Запускаем только если есть webApp, мы не в процессе другой аутентификации и пользователь еще не вошел в систему.
-    if (telegramData.webApp && !authenticatedUser && !authLoading) {
-      const initData = telegramData.webApp.initData;
-      if (initData) {
-        console.log('=== ЗАПУСК АВТОМАТИЧЕСКОЙ АУТЕНТИФИКАЦИИ (WebApp) ===');
-        authenticateUser(initData).catch(error => {
-            console.error('Ошибка WebApp аутентификации:', error);
-        });
-      } else {
-        console.warn('`initData` отсутствует, автоматическая аутентификация невозможна.');
-      }
-    }
-  }, [telegramData.webApp, authenticatedUser, authLoading, authenticateUser]);
 
   const contextValue: TelegramContextType = {
     ...telegramData,

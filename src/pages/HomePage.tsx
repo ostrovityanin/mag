@@ -2,8 +2,6 @@
 import React, { useState } from 'react';
 import { WelcomeScreen } from '@/components/WelcomeScreen';
 import { ChannelRequirement } from '@/components/ChannelRequirement';
-import { HoroscopeCard } from '@/components/HoroscopeCard';
-import { FortuneCard } from '@/components/FortuneCard';
 import { useTelegramContext } from '@/components/TelegramProvider';
 import { useUserSubscriptions } from '@/hooks/useUserSubscriptions';
 import { useChannels } from '@/hooks/useChannels';
@@ -19,8 +17,7 @@ export const HomePage: React.FC = () => {
     isAuthenticated, 
     authenticatedUser, 
     authError, 
-    isLoading: isAppLoading,
-    logout 
+    isLoading: isAppLoading 
   } = useTelegramContext();
   
   const { 
@@ -31,10 +28,7 @@ export const HomePage: React.FC = () => {
   } = useUserSubscriptions();
 
   const { data: channels = [], isLoading: channelsLoading } = useChannels();
-
   const queryClient = useQueryClient();
-
-  // Идентификатор текущей проверки (канал, по которому идет процесс)
   const [checkingChannelId, setCheckingChannelId] = useState<string | null>(null);
 
   const handleGetStarted = () => {
@@ -45,32 +39,33 @@ export const HomePage: React.FC = () => {
     if (!channelId) return;
     setCheckingChannelId(channelId);
     console.log('[ПОВТОРНАЯ ПРОВЕРКА ПОДПИСКИ] channelId:', channelId);
-    // На время для отрисовки спиннера, реальный refetch и инвалидация
+    
     try {
       await refetch();
       await queryClient.invalidateQueries({
         queryKey: ['user-subscriptions'],
         refetchType: 'active',
       });
-      await new Promise(res => setTimeout(res, 350)); // небольшой mid-delay для UX
+      await new Promise(res => setTimeout(res, 350));
     } catch (err) {
       console.error('Ошибка рефетча:', err);
     }
     setCheckingChannelId(null);
   };
 
-  // Показываем загрузку, пока инициализируется Telegram или проходит аутентификация
+  // Экран загрузки при инициализации
   if (isAppLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
         <div className="text-center">
           <LoadingSpinner size="lg" />
-          <p className="mt-4 text-white text-lg">Инициализация Telegram WebApp...</p>
+          <p className="mt-4 text-white text-lg">Инициализация приложения...</p>
         </div>
       </div>
     );
   }
 
+  // Экран ошибки аутентификации
   if (authError) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
@@ -79,21 +74,21 @@ export const HomePage: React.FC = () => {
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-bold text-red-600 mb-2">Ошибка авторизации</h2>
             <p className="text-gray-600 mb-4">{authError}</p>
-            <p className="text-sm text-gray-500">
-              Запустите приложение в Telegram для проверки подписок
-            </p>
+            <Button onClick={() => window.location.reload()} className="w-full">
+              Попробовать снова
+            </Button>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // Для неавторизованного — приветственный экран (WelcomeScreen)
+  // Приветственный экран для неавторизованных пользователей
   if (!isAuthenticated) {
     return <WelcomeScreen onGetStarted={handleGetStarted} />;
   }
 
-  // После авторизации, но до доступа — проверки подписок и каналов
+  // Загрузка данных подписок
   if (subscriptionsLoading || channelsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
@@ -105,6 +100,7 @@ export const HomePage: React.FC = () => {
     );
   }
 
+  // Ошибка при загрузке подписок
   if (subscriptionsError) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
@@ -124,42 +120,27 @@ export const HomePage: React.FC = () => {
     );
   }
 
-  // -------- Новая логика сборки подписок по channel.id и строгому соответствию каналам ---------
-  const hasUnsubscribedChannels =
-    subscriptionData && typeof subscriptionData.hasUnsubscribedChannels === 'boolean'
-      ? subscriptionData.hasUnsubscribedChannels
-      : false;
-  const missingChannels =
-    subscriptionData && Array.isArray(subscriptionData.missingChannels)
-      ? subscriptionData.missingChannels
-      : [];
+  // Логика проверки подписок
+  const hasUnsubscribedChannels = subscriptionData?.hasUnsubscribedChannels ?? false;
+  const missingChannels = subscriptionData?.missingChannels ?? [];
 
-  // Собираем объект подписок: ключ — id канала, значение — true/false
+  // Собираем объект подписок
   let subscriptionsById: Record<string, boolean> = {};
-  if (
-    subscriptionData?.debugInfo?.channels &&
-    subscriptionData?.debugInfo?.checkResult?.subscriptions
-  ) {
+  if (subscriptionData?.debugInfo?.channels && subscriptionData?.debugInfo?.checkResult?.subscriptions) {
     const rawSubs = subscriptionData.debugInfo.checkResult.subscriptions;
-
     for (const channel of subscriptionData.debugInfo.channels) {
-      // Логика: отдаем true если rawSubs содержит chat_id, username или id как ключ и там явно true
       let isTrue = false;
       if (channel.chat_id && rawSubs[channel.chat_id] === true) isTrue = true;
       if (!isTrue && channel.username && rawSubs[channel.username] === true) isTrue = true;
       if (!isTrue && rawSubs[channel.id] === true) isTrue = true;
       subscriptionsById[channel.id] = isTrue;
-      console.log(`[DEBUG SUBS] channel:`, channel, 'subscribed:', isTrue);
     }
   }
 
-  // Отфильтровываем только те каналы, которые действительно требуют подписки (is required)
-  const missingChannelIds = new Set(missingChannels.map(ch => ch.id));
-  const requiredChannels = channels.filter(c => c.required);
-
-  // Показываем требование только если есть неподтвержденные — используем полный список required каналов
+  // Показываем требования подписки, если есть неподтвержденные каналы
   if (hasUnsubscribedChannels) {
-    // КАНАЛЫ ДЛЯ ПРОВЕРКИ — только required и реально пропущенные
+    const missingChannelIds = new Set(missingChannels.map(ch => ch.id));
+    const requiredChannels = channels.filter(c => c.required);
     const missingRequiredChannels = requiredChannels.filter(c => missingChannelIds.has(c.id));
 
     return (
@@ -172,7 +153,7 @@ export const HomePage: React.FC = () => {
     );
   }
 
-  // --- ОСНОВНОЙ ИНТЕРФЕЙС для авторизованных ---
+  // Основной интерфейс приложения
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
       <div className="container mx-auto px-4 py-8">
@@ -185,8 +166,6 @@ export const HomePage: React.FC = () => {
             Персональные гороскопы и предсказания для вас
           </p>
         </div>
-        {/* Место для карточек, гороскопов и основного контента */}
-        {/* <HoroscopeCard />, <FortuneCard /> и др. можно размещать тут */}
 
         <div className="mt-12 text-center">
           <p className="text-sm text-gray-500">

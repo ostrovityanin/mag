@@ -1,15 +1,43 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useTelegramContext } from '@/components/TelegramProvider';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { AlertCircle, LogIn } from 'lucide-react';
 
 interface WelcomeScreenProps {
   onGetStarted: () => void;
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
-  const { isLoading, authError } = useTelegramContext();
+  const { webApp, isLoading, authError, authenticateUser } = useTelegramContext();
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [manualAuthError, setManualAuthError] = useState<string | null>(null);
+
+  const handleManualLogin = async () => {
+    if (!webApp?.initData) {
+      setManualAuthError('Данные Telegram WebApp недоступны');
+      return;
+    }
+
+    setIsAuthenticating(true);
+    setManualAuthError(null);
+
+    try {
+      const success = await authenticateUser(webApp.initData);
+      if (!success) {
+        setManualAuthError('Не удалось войти в систему');
+      }
+    } catch (error) {
+      setManualAuthError(error instanceof Error ? error.message : 'Ошибка входа');
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const canLogin = webApp && webApp.initData && !isLoading && !isAuthenticating;
+  const hasError = authError || manualAuthError;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
@@ -24,23 +52,60 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) =>
             </p>
           </div>
 
-          <div className="space-y-6 h-16 flex items-center justify-center">
+          <div className="space-y-4">
             {isLoading && (
               <div className="flex flex-col items-center justify-center space-y-2">
                 <LoadingSpinner />
-                <p className="text-sm text-gray-500 mt-2">Автоматическая аутентификация...</p>
+                <p className="text-sm text-gray-500">Инициализация Telegram WebApp...</p>
               </div>
             )}
-            {authError && (
-              <div className="text-red-500 text-sm">
-                <p className="font-semibold">Ошибка входа:</p>
-                <p className="text-xs mt-1">{authError}</p>
+
+            {hasError && (
+              <div className="flex flex-col items-center space-y-2 p-4 bg-red-50 rounded-lg">
+                <AlertCircle className="h-8 w-8 text-red-500" />
+                <div className="text-red-600 text-sm text-center">
+                  <p className="font-semibold">Ошибка:</p>
+                  <p className="text-xs mt-1">{hasError}</p>
+                </div>
               </div>
             )}
-            {!isLoading && !authError && (
-               <div className="text-xs text-gray-400">
-                 Для доступа к приложению, пожалуйста, откройте его через Telegram.
-               </div>
+
+            {canLogin && (
+              <div className="space-y-3">
+                <Button
+                  onClick={handleManualLogin}
+                  disabled={isAuthenticating}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                  size="lg"
+                >
+                  {isAuthenticating ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      <span className="ml-2">Вход в систему...</span>
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="w-4 h-4 mr-2" />
+                      Войти через Telegram
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-gray-500">
+                  Нажмите для входа в приложение через Telegram WebApp
+                </p>
+              </div>
+            )}
+
+            {!webApp && !isLoading && (
+              <div className="p-4 bg-yellow-50 rounded-lg">
+                <AlertCircle className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
+                <p className="text-yellow-700 text-sm text-center">
+                  Приложение должно быть запущено в Telegram
+                </p>
+                <p className="text-yellow-600 text-xs mt-1 text-center">
+                  Откройте приложение через бота в Telegram
+                </p>
+              </div>
             )}
           </div>
         </CardContent>
