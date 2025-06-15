@@ -42,7 +42,7 @@ export const DruidPage: React.FC = () => {
 
   // ЛОГИКА: если не аутентифицирован — показываем WelcomeScreen, как на главной
   if (!currentIsAuthenticated) {
-    return <WelcomeScreen onGetStarted={() => {}} />;
+    return <WelcomeScreen onGetStarted={() => {}} showLoginControls={true} />;
   }
 
   if (currentSubscriptionCheck.isLoading) {

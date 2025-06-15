@@ -8,9 +8,13 @@ import { AlertCircle, LogIn, RefreshCw } from 'lucide-react';
 
 interface WelcomeScreenProps {
   onGetStarted: () => void;
+  showLoginControls?: boolean; // Новый проп для контроля отображения элементов входа
 }
 
-export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
+export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ 
+  onGetStarted, 
+  showLoginControls = false 
+}) => {
   const { webApp, isLoading, isAuthLoading, authError, authenticateUser } = useTelegramContext();
   const [manualAuthError, setManualAuthError] = useState<string | null>(null);
 
@@ -63,7 +67,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) =>
               </div>
             )}
 
-            {hasError && (
+            {showLoginControls && hasError && (
               <div className="flex flex-col items-center space-y-2 p-4 bg-red-50 rounded-lg">
                 <AlertCircle className="h-8 w-8 text-red-500" />
                 <div className="text-red-600 text-sm text-center">
@@ -82,7 +86,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) =>
               </div>
             )}
 
-            {canLogin && (
+            {showLoginControls && canLogin && (
               <div className="space-y-3">
                 <Button
                   onClick={handleManualLogin}
