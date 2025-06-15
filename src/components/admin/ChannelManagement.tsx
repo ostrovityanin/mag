@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useChannels } from '@/hooks/useChannels';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
@@ -38,7 +39,7 @@ export const ChannelManagement: React.FC = () => {
     invite_link: '',
     channel_type: 'public',
     required: true,
-    app_name: 'astro_cookie'
+    app_name: 'druid'
   });
 
   const createChannelMutation = useMutation({
@@ -47,7 +48,7 @@ export const ChannelManagement: React.FC = () => {
         .from('channels')
         .insert({
           name: data.name,
-          username: data.username,
+          username: data.username || '',
           chat_id: data.chat_id || null,
           invite_link: data.invite_link || null,
         })
@@ -58,7 +59,7 @@ export const ChannelManagement: React.FC = () => {
       const channelId = channelData.id;
 
       const appsToInsert = data.app_name === 'both' 
-        ? ['astro_cookie', 'druid_horoscope'] 
+        ? ['cookie', 'druid'] 
         : [data.app_name];
       
       const appChannelInserts = appsToInsert.map(appName => ({
@@ -99,7 +100,7 @@ export const ChannelManagement: React.FC = () => {
     mutationFn: async ({ id, data }: { id: string; data: Partial<ChannelFormData> }) => {
       const channelUpdateData: { [key: string]: any } = {};
       if (data.name !== undefined) channelUpdateData.name = data.name;
-      if (data.username !== undefined) channelUpdateData.username = data.username;
+      if (data.username !== undefined) channelUpdateData.username = data.username || '';
       if (data.chat_id !== undefined) channelUpdateData.chat_id = data.chat_id || null;
       if (data.invite_link !== undefined) channelUpdateData.invite_link = data.invite_link || null;
 
@@ -178,21 +179,33 @@ export const ChannelManagement: React.FC = () => {
       invite_link: '',
       channel_type: 'public',
       required: true,
-      app_name: 'astro_cookie'
+      app_name: 'druid'
     });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Не даём отправить форму без username только если тип public
-    if (formData.channel_type === "public" && !formData.username.trim()) {
+    
+    // Проверяем, что для публичных каналов указан username или chat_id
+    if (formData.channel_type === "public" && !formData.username.trim() && !formData.chat_id.trim()) {
       toast({
         title: "Ошибка",
-        description: "Укажите username для публичного канала.",
+        description: "Для публичного канала укажите username или chat_id.",
         variant: "destructive"
       });
       return;
     }
+
+    // Для приватных каналов требуется chat_id
+    if (formData.channel_type === "private" && !formData.chat_id.trim()) {
+      toast({
+        title: "Ошибка",
+        description: "Для приватного канала обязательно укажите chat_id.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (editingChannel) {
       updateChannelMutation.mutate({ id: editingChannel.id, data: formData });
     } else {
@@ -267,38 +280,6 @@ export const ChannelManagement: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="username">
-                    Username (без @)
-                  </Label>
-                  <Input
-                    id="username"
-                    value={formData.username}
-                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                    required={formData.channel_type === "public"}
-                    disabled={formData.channel_type === "private"}
-                    placeholder={formData.channel_type === "private" ? "Не требуется для приватных каналов" : ""}
-                  />
-                  {formData.channel_type === "private" && (
-                    <span className="text-xs text-gray-500">Не требуется для приватных каналов</span>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="chat_id">Chat ID</Label>
-                  <Input
-                    id="chat_id"
-                    value={formData.chat_id}
-                    onChange={(e) => setFormData({ ...formData, chat_id: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="invite_link">Ссылка-приглашение</Label>
-                  <Input
-                    id="invite_link"
-                    value={formData.invite_link}
-                    onChange={(e) => setFormData({ ...formData, invite_link: e.target.value })}
-                  />
-                </div>
-                <div>
                   <Label htmlFor="channel_type">Тип канала</Label>
                   <Select value={formData.channel_type} onValueChange={(value) => handleChannelTypeChange(value as 'public' | 'private')}>
                     <SelectTrigger>
@@ -311,14 +292,47 @@ export const ChannelManagement: React.FC = () => {
                   </Select>
                 </div>
                 <div>
+                  <Label htmlFor="username">
+                    Username (без @) {formData.channel_type === 'private' && '(необязательно)'}
+                  </Label>
+                  <Input
+                    id="username"
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    disabled={formData.channel_type === "private"}
+                    placeholder={formData.channel_type === "private" ? "Не требуется для приватных каналов" : "username без @"}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="chat_id">
+                    Chat ID {formData.channel_type === 'private' && '(обязательно)'}
+                  </Label>
+                  <Input
+                    id="chat_id"
+                    value={formData.chat_id}
+                    onChange={(e) => setFormData({ ...formData, chat_id: e.target.value })}
+                    placeholder="Например: -1001234567890"
+                    required={formData.channel_type === 'private'}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="invite_link">Ссылка-приглашение</Label>
+                  <Input
+                    id="invite_link"
+                    value={formData.invite_link}
+                    onChange={(e) => setFormData({ ...formData, invite_link: e.target.value })}
+                    placeholder="https://t.me/..."
+                  />
+                </div>
+                <div>
                   <Label htmlFor="app_name">Приложение</Label>
                   <Select value={formData.app_name} onValueChange={(value) => setFormData({ ...formData, app_name: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="astro_cookie">Astro Cookie</SelectItem>
-                      <SelectItem value="druid_horoscope">Druid Horoscope</SelectItem>
+                      <SelectItem value="cookie">Cookie</SelectItem>
+                      <SelectItem value="druid">Druid</SelectItem>
                       <SelectItem value="both">Оба приложения</SelectItem>
                     </SelectContent>
                   </Select>
@@ -369,6 +383,7 @@ export const ChannelManagement: React.FC = () => {
               <TableRow>
                 <TableHead>Название</TableHead>
                 <TableHead>Username</TableHead>
+                <TableHead>Chat ID</TableHead>
                 <TableHead>Тип</TableHead>
                 <TableHead>Приложение</TableHead>
                 <TableHead>Обязательный</TableHead>
@@ -380,6 +395,7 @@ export const ChannelManagement: React.FC = () => {
                 <TableRow key={`${channel.id}-${channel.app_name}`}>
                   <TableCell className="font-medium">{channel.name}</TableCell>
                   <TableCell>{channel.username ? `@${channel.username}`: '-'}</TableCell>
+                  <TableCell className="text-xs">{channel.chat_id || '-'}</TableCell>
                   <TableCell>
                     <Badge variant={channel.channel_type === 'public' ? 'default' : 'secondary'}>
                       {channel.channel_type === 'public' ? 'Публичный' : 'Приватный'}
