@@ -1,5 +1,6 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
 // Типы для работы с Telegram
@@ -23,22 +24,16 @@ interface SubscriptionCheck {
   channel_name?: string;
 }
 
-// Каналы для разных приложений
-const APP_CHANNELS = {
-  druid: [
-    { id: '-1002473071772', name: '@druid_horoscope_channel' },
-    // Добавьте другие каналы для друид-приложения
-  ],
-  main: [
-    { id: '-1002345678901', name: '@main_app_channel' },
-    // Каналы для основного приложения
-  ]
-};
-
 const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
 if (!BOT_TOKEN) {
   console.error('TELEGRAM_BOT_TOKEN не установлен');
+}
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('SUPABASE_URL или SUPABASE_SERVICE_ROLE_KEY не установлены');
 }
 
 // Проверка подписи initData (упрощенная версия)
@@ -121,8 +116,62 @@ serve(async (req) => {
     const user = parsedData.user;
     console.log(`Проверяем подписки для пользователя ${user.id} (${user.username || user.first_name})`);
 
-    // Получаем каналы для приложения
-    const channels = APP_CHANNELS[app as keyof typeof APP_CHANNELS] || APP_CHANNELS.druid;
+    // Получаем каналы из базы данных
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+    
+    const { data: appChannels, error: appChannelsError } = await supabase
+      .from('app_channels')
+      .select(`
+        app,
+        required,
+        channels (
+          id,
+          username,
+          chat_id,
+          name,
+          invite_link,
+          created_at
+        )
+      `)
+      .eq('app', app)
+      .eq('required', true);
+
+    if (appChannelsError) {
+      console.error('Ошибка получения каналов из БД:', appChannelsError);
+      return new Response(
+        JSON.stringify({ error: 'Ошибка получения списка каналов' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!appChannels || appChannels.length === 0) {
+      console.log(`Нет обязательных каналов для приложения ${app}`);
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          checks: [],
+          user: {
+            id: user.id,
+            first_name: user.first_name,
+            username: user.username
+          }
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Преобразуем данные в нужный формат
+    const channels = appChannels
+      .map(ac => {
+        if (!ac.channels) return null;
+        return {
+          id: ac.channels.chat_id || ac.channels.username || ac.channels.id,
+          name: ac.channels.username ? `@${ac.channels.username}` : ac.channels.name
+        };
+      })
+      .filter((c): c is { id: string; name: string } => c !== null);
+
+    console.log(`Найдено ${channels.length} каналов для проверки:`, channels);
     
     // Проверяем подписки параллельно
     const checks: SubscriptionCheck[] = await Promise.all(
