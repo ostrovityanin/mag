@@ -10,6 +10,7 @@ interface SubscribeScreenProps {
     chat_id: string;
     status: string;
     channel_name?: string;
+    invite_link?: string;
   }>;
   onRefresh: () => void;
   isRefreshing: boolean;
@@ -28,12 +29,20 @@ export const SubscribeScreen: React.FC<SubscribeScreenProps> = ({
   user,
   onOpenChannel,
 }) => {
-  const getChannelUrl = (chatId: string, channelName?: string) => {
-    if (channelName) {
-      return `https://t.me/${channelName.replace('@', '')}`;
+  const getChannelUrl = (channel: { chat_id: string; channel_name?: string; invite_link?: string }) => {
+    // Если есть invite_link, используем его (для приватных каналов)
+    if (channel.invite_link) {
+      return channel.invite_link;
     }
-    // Для приватных каналов используем chat_id (может потребоваться дополнительная логика)
-    return `https://t.me/joinchat/${chatId}`;
+    
+    // Если есть channel_name (username), формируем публичную ссылку
+    if (channel.channel_name && !channel.channel_name.startsWith('-')) {
+      const username = channel.channel_name.replace('@', '');
+      return `https://t.me/${username}`;
+    }
+    
+    // Для случаев, когда нет ни invite_link, ни username
+    return '#';
   };
 
   return (
@@ -57,21 +66,32 @@ export const SubscribeScreen: React.FC<SubscribeScreenProps> = ({
 
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <div className="space-y-2 mb-4">
-              {missingChannels.map((channel, index) => (
-                <div key={channel.chat_id} className="flex items-center justify-between p-2 bg-white rounded border">
-                  <span className="text-sm font-medium">
-                    {channel.channel_name || `Канал ${index + 1}`}
-                  </span>
-                  <Button 
-                    onClick={() => onOpenChannel(getChannelUrl(channel.chat_id, channel.channel_name))}
-                    size="sm"
-                    className="bg-yellow-600 hover:bg-yellow-700"
-                  >
-                    <ExternalLink className="h-3 w-3 mr-1" />
-                    Перейти
-                  </Button>
-                </div>
-              ))}
+              {missingChannels.map((channel, index) => {
+                const channelUrl = getChannelUrl(channel);
+                const isValidUrl = channelUrl !== '#';
+                
+                return (
+                  <div key={channel.chat_id} className="flex items-center justify-between p-2 bg-white rounded border">
+                    <span className="text-sm font-medium">
+                      {channel.channel_name || `Канал ${index + 1}`}
+                    </span>
+                    {isValidUrl ? (
+                      <Button 
+                        onClick={() => onOpenChannel(channelUrl)}
+                        size="sm"
+                        className="bg-yellow-600 hover:bg-yellow-700"
+                      >
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        Перейти
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-gray-500">
+                        Обратитесь к админу
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
 

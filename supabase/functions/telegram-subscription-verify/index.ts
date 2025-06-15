@@ -22,6 +22,7 @@ interface SubscriptionCheck {
   chat_id: string;
   status: string;
   channel_name?: string;
+  invite_link?: string;
 }
 
 const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
@@ -166,13 +167,13 @@ serve(async (req) => {
         if (!ac.channels) return null;
         return {
           id: ac.channels.chat_id || ac.channels.username || ac.channels.id,
-          // Исправляем логику формирования имени канала
           name: ac.channels.username 
             ? (ac.channels.username.startsWith('@') ? ac.channels.username : `@${ac.channels.username}`)
-            : ac.channels.name
+            : ac.channels.name,
+          invite_link: ac.channels.invite_link
         };
       })
-      .filter((c): c is { id: string; name: string } => c !== null);
+      .filter((c): c is { id: string; name: string; invite_link?: string } => c !== null);
 
     console.log(`Найдено ${channels.length} каналов для проверки:`, channels);
     
@@ -183,7 +184,8 @@ serve(async (req) => {
         return {
           chat_id: channel.id,
           status,
-          channel_name: channel.name
+          channel_name: channel.name,
+          invite_link: channel.invite_link
         };
       })
     );
