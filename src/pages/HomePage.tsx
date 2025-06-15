@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { WelcomeScreen } from '@/components/WelcomeScreen';
 import { ChannelRequirement } from '@/components/ChannelRequirement';
@@ -31,7 +32,6 @@ export const HomePage: React.FC = () => {
   const { data: channels = [], isLoading: channelsLoading } = useChannels();
 
   const handleGetStarted = () => {
-    // Логика начала работы с приложением
     console.log('Пользователь начал работу с приложением');
   };
 
@@ -47,7 +47,6 @@ export const HomePage: React.FC = () => {
     );
   }
 
-  // Показываем ошибку аутентификации
   if (authError) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
@@ -65,12 +64,10 @@ export const HomePage: React.FC = () => {
     );
   }
 
-  // Показываем приветственный экран, если пользователь не аутентифицирован
   if (!isAuthenticated) {
     return <WelcomeScreen onGetStarted={handleGetStarted} />;
   }
 
-  // Показываем загрузку при проверке подписок
   if (subscriptionsLoading || channelsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
@@ -82,7 +79,6 @@ export const HomePage: React.FC = () => {
     );
   }
 
-  // Показываем ошибку подписок
   if (subscriptionsError) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
@@ -102,7 +98,7 @@ export const HomePage: React.FC = () => {
     );
   }
 
-  // Дефолтные значения, чтобы не было ошибок типов
+  // -------- Новая логика сборки подписок по channel.id ---------
   const hasUnsubscribedChannels =
     subscriptionData && typeof subscriptionData.hasUnsubscribedChannels === 'boolean'
       ? subscriptionData.hasUnsubscribedChannels
@@ -112,12 +108,29 @@ export const HomePage: React.FC = () => {
       ? subscriptionData.missingChannels
       : [];
 
+  // Собираем объект subscriptions: ключ — id канала, значение — true/false
+  let subscriptionsById: Record<string, boolean> = {};
+  if (
+    subscriptionData?.debugInfo?.channels &&
+    subscriptionData?.debugInfo?.checkResult?.subscriptions
+  ) {
+    const rawSubs = subscriptionData.debugInfo.checkResult.subscriptions;
+    // debugInfo.channels: [{id, username, chat_id, name}]
+    for (const channel of subscriptionData.debugInfo.channels) {
+      const key = channel.chat_id || channel.username;
+      // Если вдруг оба ключа есть в subscriptions — отдаем приоритет chat_id
+      if (key && rawSubs.hasOwnProperty(key)) {
+        subscriptionsById[channel.id] = !!rawSubs[key];
+      }
+    }
+  }
+
   // Если есть неподтвержденные каналы, показываем требования
   if (hasUnsubscribedChannels) {
     return (
       <ChannelRequirement 
         channels={channels.filter(c => missingChannels.some(mc => mc.id === c.id))} 
-        subscriptions={{}}
+        subscriptions={subscriptionsById}
         onCheckSubscription={() => refetch()}
         isChecking={null}
       />
