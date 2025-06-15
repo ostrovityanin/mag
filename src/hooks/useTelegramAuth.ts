@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAdminLogs } from '@/hooks/useAdminLogs';
@@ -85,17 +86,32 @@ export const useTelegramAuth = () => {
         success: true,
       });
 
+      console.log('Вызываем edge-функцию telegram-auth...');
+      
+      // Вызываем edge-функцию с улучшенной обработкой ошибок
       const { data: authResult, error: authError } = await supabase.functions.invoke(
         'telegram-auth',
-        { body: { initData } }
+        { 
+          body: { initData },
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
       );
 
+      console.log('Результат вызова edge-функции:', { authResult, authError });
+
       if (authError) {
-        throw new Error(`Ошибка верификации WebApp: ${authError.message}`);
+        console.error('Ошибка при вызове edge-функции:', authError);
+        throw new Error(`Ошибка сети: ${authError.message || 'Не удалось связаться с сервером'}`);
       }
 
-      if (!authResult || !authResult.success) {
-        throw new Error(authResult?.error || 'Неизвестная ошибка верификации WebApp');
+      if (!authResult) {
+        throw new Error('Сервер вернул пустой ответ');
+      }
+
+      if (!authResult.success) {
+        throw new Error(authResult.error || 'Неизвестная ошибка сервера');
       }
 
       const userData = authResult.user;
@@ -125,7 +141,13 @@ export const useTelegramAuth = () => {
       return true;
 
     } catch (err: any) {
-      const errorMessage = err?.message ?? 'Ошибка аутентификации WebApp';
+      console.error('Ошибка аутентификации:', err);
+      
+      let errorMessage = 'Ошибка аутентификации WebApp';
+      if (err?.message) {
+        errorMessage = err.message;
+      }
+      
       setError(errorMessage);
       setCurrentUser(null);
 

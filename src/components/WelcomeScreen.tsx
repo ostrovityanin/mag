@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useTelegramContext } from '@/components/TelegramProvider';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { AlertCircle, LogIn } from 'lucide-react';
+import { AlertCircle, LogIn, RefreshCw } from 'lucide-react';
 
 interface WelcomeScreenProps {
   onGetStarted: () => void;
@@ -25,15 +25,22 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) =>
     setManualAuthError(null);
 
     try {
+      console.log('Начинаем ручную аутентификацию...');
       const success = await authenticateUser(webApp.initData);
       if (!success) {
         setManualAuthError('Не удалось войти в систему');
       }
     } catch (error) {
+      console.error('Ошибка при ручной аутентификации:', error);
       setManualAuthError(error instanceof Error ? error.message : 'Ошибка входа');
     } finally {
       setIsAuthenticating(false);
     }
+  };
+
+  const handleRetry = () => {
+    setManualAuthError(null);
+    window.location.reload();
   };
 
   const canLogin = webApp && webApp.initData && !isLoading && !isAuthenticating;
@@ -67,6 +74,15 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) =>
                   <p className="font-semibold">Ошибка:</p>
                   <p className="text-xs mt-1">{hasError}</p>
                 </div>
+                <Button
+                  onClick={handleRetry}
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Попробовать снова
+                </Button>
               </div>
             )}
 
