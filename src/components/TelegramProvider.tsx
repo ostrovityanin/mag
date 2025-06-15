@@ -21,7 +21,7 @@ interface TelegramContextType {
     selection: () => void;
   };
   logout: () => Promise<void>;
-  authenticateUser: (user: TelegramUser) => Promise<boolean>;
+  authenticateUser: (initData: string) => Promise<boolean>;
 }
 
 const TelegramContext = createContext<TelegramContextType | null>(null);
@@ -36,25 +36,26 @@ export const TelegramProvider: React.FC<{ children: ReactNode }> = ({ children }
     logout 
   } = useTelegramAuth();
 
-  // Автоматически аутентифицируем пользователя, когда данные Telegram загружены
+  // Автоматически аутентифицируем пользователя, когда данные Telegram WebApp загружены
   useEffect(() => {
-    console.log('=== ПРОВЕРКА АВТОМАТИЧЕСКОЙ АУТЕНТИФИКАЦИИ ===');
-    console.log('telegramData.isLoading:', telegramData.isLoading);
-    console.log('telegramData.user:', telegramData.user);
-    console.log('authLoading:', authLoading);
-    console.log('authenticatedUser:', authenticatedUser);
-    
-    if (!telegramData.isLoading && telegramData.user && !authLoading && !authenticatedUser) {
-      console.log('=== ЗАПУСК АВТОМАТИЧЕСКОЙ АУТЕНТИФИКАЦИИ ===');
-      console.log('Telegram пользователь найден, начинаем аутентификацию:', telegramData.user);
-      
-      authenticateUser(telegramData.user).then((success) => {
-        console.log('Результат аутентификации:', success);
-      }).catch((error) => {
-        console.error('Ошибка аутентификации:', error);
-      });
+    console.log('=== ПРОВЕРКА АВТОМАТИЧЕСКОЙ АУТЕНТИФИКАЦИИ (WebApp) ===');
+    console.log('telegramData.isLoading:', telegramData.isLoading, 'authLoading:', authLoading);
+    console.log('WebApp:', !!telegramData.webApp, 'authenticatedUser:', !!authenticatedUser);
+
+    if (!telegramData.isLoading && telegramData.webApp && !authLoading && !authenticatedUser) {
+        const initData = telegramData.webApp.initData;
+        if (initData) {
+            console.log('=== ЗАПУСК АВТОМАТИЧЕСКОЙ АУТЕНТИФИКАЦИИ (WebApp) ===');
+            authenticateUser(initData).then(success => {
+                console.log('Результат WebApp аутентификации:', success);
+            }).catch(error => {
+                console.error('Ошибка WebApp аутентификации:', error);
+            });
+        } else {
+            console.warn('`initData` отсутствует, автоматическая аутентификация невозможна.');
+        }
     }
-  }, [telegramData.user, telegramData.isLoading, authLoading, authenticatedUser, authenticateUser]);
+  }, [telegramData.webApp, telegramData.isLoading, authLoading, authenticatedUser, authenticateUser]);
 
   // Детальное логирование состояния каждые 2 секунды для отладки
   useEffect(() => {
@@ -77,6 +78,7 @@ export const TelegramProvider: React.FC<{ children: ReactNode }> = ({ children }
   const contextValue: TelegramContextType = {
     ...telegramData,
     authenticatedUser,
+    isLoading: telegramData.isLoading || authLoading,
     isAuthenticated: !!authenticatedUser,
     authError,
     logout,

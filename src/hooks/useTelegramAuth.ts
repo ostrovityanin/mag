@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAdminLogs } from '@/hooks/useAdminLogs';
@@ -20,8 +19,7 @@ interface TelegramUserData {
 }
 
 /**
- * Обновленный хук useTelegramAuth для работы с Telegram Login Widget
- * Удалена поддержка WebApp initDataUnsafe для повышения безопасности
+ * Обновленный хук useTelegramAuth для работы с Telegram WebApp
  */
 export const useTelegramAuth = () => {
   const [currentUser, setCurrentUser] = useState<TelegramUserData | null>(null);
@@ -32,31 +30,19 @@ export const useTelegramAuth = () => {
   const { checkForTestUser, logSuspiciousAuth } = useSecurityMonitor();
 
   /**
-   * Проверить валидность данных пользователя от Telegram Login Widget
+   * Проверить валидность данных пользователя от Telegram WebApp
    */
-  const validateTelegramWidgetUser = useCallback((telegramData: any): true => {
-    if (!telegramData || !telegramData.id || typeof telegramData.id !== 'number' || telegramData.id <= 0) {
-      logSuspiciousAuth(telegramData?.id ?? 0, 'Недопустимый telegram_id от Widget');
-      throw new Error('Недопустимый telegram_id от Telegram Widget');
-    }
-
-    if (!telegramData.hash || !telegramData.auth_date) {
-      logSuspiciousAuth(telegramData.id, 'Отсутствуют обязательные поля верификации от Widget');
-      throw new Error('Отсутствуют данные верификации от Telegram Widget');
-    }
-
-    // Проверяем время аутентификации (не старше 24 часов)
-    const authAge = Date.now() / 1000 - telegramData.auth_date;
-    if (authAge > 86400) {
-      logSuspiciousAuth(telegramData.id, 'Устаревшие данные аутентификации от Widget');
-      throw new Error('Данные аутентификации устарели');
+  const validateTelegramWebAppUser = useCallback((user: any): true => {
+    if (!user || !user.id || typeof user.id !== 'number' || user.id <= 0) {
+      logSuspiciousAuth(user?.id ?? 0, 'Недопустимый telegram_id от WebApp');
+      throw new Error('Недопустимый telegram_id от Telegram WebApp');
     }
 
     // Блокируем тестовых пользователей
-    const check = checkForTestUser(telegramData.id, telegramData.username);
+    const check = checkForTestUser(user.id, user.username);
     if (check.isTestUser) {
       const msg = `Тестовые пользователи запрещены (${check.reason})`;
-      logSuspiciousAuth(telegramData.id, msg);
+      logSuspiciousAuth(user.id, msg);
       throw new Error(msg);
     }
 
@@ -64,53 +50,52 @@ export const useTelegramAuth = () => {
   }, [checkForTestUser, logSuspiciousAuth]);
 
   /**
-   * Аутентификация пользователя через Telegram Login Widget
+   * Аутентификация пользователя через Telegram WebApp initData
    */
-  const authenticateUser = useCallback(async (telegramData: any): Promise<boolean> => {
+  const authenticateUser = useCallback(async (initData: string): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
+    let telegramUser: any = null;
 
     try {
-      console.log('=== НАЧАЛО WIDGET АУТЕНТИФИКАЦИИ ===');
-      console.log('Данные от Widget:', telegramData);
+      console.log('=== НАЧАЛО WEBAPP АУТЕНТИФИКАЦИИ ===');
+      if (!initData) {
+        throw new Error('Отсутствуют данные для аутентификации (initData)');
+      }
 
-      // Валидируем данные
-      validateTelegramWidgetUser(telegramData);
+      const params = new URLSearchParams(initData);
+      const userJson = params.get('user');
+      if (!userJson) {
+        throw new Error('Данные пользователя отсутствуют в initData');
+      }
+      telegramUser = JSON.parse(userJson);
 
-      // Логируем попытку аутентификации
+      validateTelegramWebAppUser(telegramUser);
+      
       logAdminAction({
         log_type: 'auth_attempt',
-        operation: 'widget_user_login_attempt',
+        operation: 'webapp_user_login_attempt',
         details: {
-          telegram_id: telegramData.id,
-          username: telegramData.username,
-          first_name: telegramData.first_name,
-          auth_date: telegramData.auth_date,
-          has_hash: !!telegramData.hash,
-          auth_method: 'telegram_widget',
+          telegram_id: telegramUser.id,
+          username: telegramUser.username,
+          auth_method: 'telegram_webapp',
           timestamp: new Date().toISOString(),
         },
-        telegram_user_id: telegramData.id,
+        telegram_user_id: telegramUser.id,
         success: true,
       });
 
-      // Вызываем edge function для безопасной верификации и создания пользователя
       const { data: authResult, error: authError } = await supabase.functions.invoke(
-        'telegram-widget-auth',
-        {
-          body: {
-            telegramData,
-            timestamp: Date.now()
-          }
-        }
+        'telegram-auth',
+        { body: { initData } }
       );
 
       if (authError) {
-        throw new Error(`Ошибка верификации Widget: ${authError.message}`);
+        throw new Error(`Ошибка верификации WebApp: ${authError.message}`);
       }
 
       if (!authResult || !authResult.success) {
-        throw new Error(authResult?.error || 'Неизвестная ошибка верификации Widget');
+        throw new Error(authResult?.error || 'Неизвестная ошибка верификации WebApp');
       }
 
       const userData = authResult.user;
@@ -120,19 +105,17 @@ export const useTelegramAuth = () => {
         throw new Error('Не удалось получить данные пользователя или сессию');
       }
 
-      // Сохраняем токен сессии
       localStorage.setItem('telegram_session_token', sessionToken);
       setCurrentUser(userData);
 
-      // Логируем успешную аутентификацию
       logAdminAction({
         log_type: 'auth_attempt',
-        operation: 'widget_user_login_completed',
+        operation: 'webapp_user_login_completed',
         details: {
           user_id: userData.id,
           telegram_id: userData.telegram_id,
           username: userData.username,
-          auth_method: 'telegram_widget',
+          auth_method: 'telegram_webapp',
           login_finished: new Date().toISOString(),
         },
         telegram_user_id: userData.telegram_id,
@@ -142,22 +125,21 @@ export const useTelegramAuth = () => {
       return true;
 
     } catch (err: any) {
-      const errorMessage = err?.message ?? 'Ошибка аутентификации Widget';
+      const errorMessage = err?.message ?? 'Ошибка аутентификации WebApp';
       setError(errorMessage);
       setCurrentUser(null);
 
-      // Логируем ошибку
       logAdminAction({
         log_type: 'auth_attempt',
-        operation: 'widget_user_login_failed',
+        operation: 'webapp_user_login_failed',
         details: {
-          telegram_id: telegramData?.id || null,
-          username: telegramData?.username,
+          telegram_id: telegramUser?.id || null,
+          username: telegramUser?.username,
           error: errorMessage,
-          auth_method: 'telegram_widget',
+          auth_method: 'telegram_webapp',
           timestamp: new Date().toISOString(),
         },
-        telegram_user_id: telegramData?.id || 0,
+        telegram_user_id: telegramUser?.id || 0,
         success: false,
         error_message: errorMessage,
       });
@@ -166,7 +148,7 @@ export const useTelegramAuth = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [validateTelegramWidgetUser, logAdminAction]);
+  }, [validateTelegramWebAppUser, logAdminAction]);
 
   /**
    * Проверить сессию в базе

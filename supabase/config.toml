@@ -42,8 +42,6 @@ verify_jwt = false
 [functions.simple-check-subscription]
 verify_jwt = false
 
-[functions.telegram-widget-auth]
+[functions.telegram-auth]
 verify_jwt = false
 
-[functions.get-telegram-bot-username]
-verify_jwt = false
