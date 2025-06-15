@@ -8,11 +8,11 @@ import { User, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export const UserInfoHeader: React.FC = () => {
-  const { authenticatedUser, logout, isAuthenticated } = useTelegramContext();
+  const { user, logout, isAuthenticated } = useTelegramContext();
   const { toast } = useToast();
 
   // Не показываем компонент если пользователь не аутентифицирован
-  if (!isAuthenticated || !authenticatedUser) {
+  if (!isAuthenticated || !user) {
     return null;
   }
 
@@ -23,7 +23,6 @@ export const UserInfoHeader: React.FC = () => {
         title: "Успешный выход",
         description: "Вы успешно вышли из системы",
       });
-      // Не перезагружаем страницу, позволяем приложению обновиться автоматически
     } catch (error) {
       toast({
         title: "Ошибка выхода",
@@ -42,17 +41,17 @@ export const UserInfoHeader: React.FC = () => {
               <User className="h-5 w-5 text-green-600" />
               <div>
                 <div className="font-medium text-green-800">
-                  {authenticatedUser.first_name} {authenticatedUser.last_name || ''}
+                  {user.first_name} {user.last_name || ''}
                 </div>
-                {authenticatedUser.username && (
+                {user.username && (
                   <div className="text-sm text-green-600">
-                    @{authenticatedUser.username}
+                    @{user.username}
                   </div>
                 )}
               </div>
             </div>
             <Badge variant="outline" className="bg-white border-green-300 text-green-700">
-              ID: {authenticatedUser.telegram_id}
+              ID: {user.id}
             </Badge>
           </div>
           <Button

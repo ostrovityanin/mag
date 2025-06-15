@@ -15,6 +15,10 @@ interface TelegramContextType {
     impact: (style?: 'light' | 'medium' | 'heavy') => void;
     notification: (type: 'error' | 'success' | 'warning') => void;
   };
+  // Добавляем совместимые свойства для компонентов
+  authenticatedUser: TelegramUser | null;
+  isAuthenticated: boolean;
+  logout: () => Promise<void>;
 }
 
 const TelegramContext = createContext<TelegramContextType | null>(null);
@@ -22,8 +26,20 @@ const TelegramContext = createContext<TelegramContextType | null>(null);
 export const TelegramProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const telegramData = useTelegramWebApp();
 
+  // Простая функция logout для совместимости
+  const logout = async () => {
+    // В текущей архитектуре просто очищаем localStorage
+    localStorage.clear();
+    // Перезагружаем страницу для полного сброса состояния
+    window.location.reload();
+  };
+
   const contextValue: TelegramContextType = {
     ...telegramData,
+    // Добавляем совместимые свойства
+    authenticatedUser: telegramData.user,
+    isAuthenticated: !!telegramData.user,
+    logout,
   };
 
   return (
