@@ -8,7 +8,8 @@ interface TelegramContextType {
   webApp: TelegramWebApp | null;
   user: TelegramUser | null;
   authenticatedUser: any | null;
-  isLoading: boolean;
+  isLoading: boolean; // For initial Telegram WebApp loading
+  isAuthLoading: boolean; // For authentication process loading
   isAuthenticated: boolean;
   authError: string | null;
   showMainButton: (text: string, onClick: () => void) => void;
@@ -39,7 +40,8 @@ export const TelegramProvider: React.FC<{ children: ReactNode }> = ({ children }
   const contextValue: TelegramContextType = {
     ...telegramData,
     authenticatedUser,
-    isLoading: telegramData.isLoading || authLoading,
+    isLoading: telegramData.isLoading,
+    isAuthLoading: authLoading,
     isAuthenticated: !!authenticatedUser,
     authError,
     logout,

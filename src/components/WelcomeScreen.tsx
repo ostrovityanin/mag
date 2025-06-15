@@ -11,8 +11,7 @@ interface WelcomeScreenProps {
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) => {
-  const { webApp, isLoading, authError, authenticateUser } = useTelegramContext();
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const { webApp, isLoading, isAuthLoading, authError, authenticateUser } = useTelegramContext();
   const [manualAuthError, setManualAuthError] = useState<string | null>(null);
 
   const handleManualLogin = async () => {
@@ -21,7 +20,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) =>
       return;
     }
 
-    setIsAuthenticating(true);
     setManualAuthError(null);
 
     try {
@@ -33,8 +31,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) =>
     } catch (error) {
       console.error('Ошибка при ручной аутентификации:', error);
       setManualAuthError(error instanceof Error ? error.message : 'Ошибка входа');
-    } finally {
-      setIsAuthenticating(false);
     }
   };
 
@@ -43,7 +39,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) =>
     window.location.reload();
   };
 
-  const canLogin = webApp && webApp.initData && !isLoading && !isAuthenticating;
+  const canLogin = webApp && webApp.initData && !isLoading && !isAuthLoading;
   const hasError = authError || manualAuthError;
 
   return (
@@ -90,11 +86,11 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) =>
               <div className="space-y-3">
                 <Button
                   onClick={handleManualLogin}
-                  disabled={isAuthenticating}
+                  disabled={isAuthLoading}
                   className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                   size="lg"
                 >
-                  {isAuthenticating ? (
+                  {isAuthLoading ? (
                     <>
                       <LoadingSpinner size="sm" />
                       <span className="ml-2">Вход в систему...</span>
