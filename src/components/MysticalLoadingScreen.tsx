@@ -5,8 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { TreePine, Stars, Moon, Sparkles } from 'lucide-react';
 
 interface MysticalLoadingScreenProps {
-  progress: number;
-  currentChannel: string;
+  progress?: number;
+  currentChannel?: string;
 }
 
 export const MysticalLoadingScreen: React.FC<MysticalLoadingScreenProps> = ({
@@ -45,22 +45,24 @@ export const MysticalLoadingScreen: React.FC<MysticalLoadingScreenProps> = ({
           </p>
 
           {/* Прогресс бар */}
-          <div className="mb-4">
-            <Progress 
-              value={progress} 
-              className="h-3 bg-purple-900/50 border border-purple-500/30"
-            />
-            <div className="mt-2 text-right">
-              <span className="text-xs text-purple-300">
-                {progress}%
-              </span>
+          {progress !== undefined && (
+            <div className="mb-4">
+              <Progress 
+                value={progress} 
+                className="h-3 bg-purple-900/50 border border-purple-500/30"
+              />
+              <div className="mt-2 text-right">
+                <span className="text-xs text-purple-300">
+                  {progress}%
+                </span>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Текущее действие */}
-          <div className="space-y-2">
+          <div className="space-y-2 mt-4">
             <p className="text-emerald-300 text-sm font-medium animate-pulse">
-              {currentChannel}
+              {currentChannel || 'Соединяемся с лесом...'}
             </p>
             <div className="flex justify-center space-x-1">
               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce"></div>

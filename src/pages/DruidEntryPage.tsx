@@ -3,7 +3,6 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTelegramContext } from '@/components/TelegramProvider';
 import { useSubscriptionVerification } from '@/hooks/useSubscriptionVerification';
-import { UserInfoHeader } from '@/components/UserInfoHeader';
 import { AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { WelcomeScreen } from "@/components/WelcomeScreen";
@@ -18,8 +17,6 @@ export const DruidEntryPage: React.FC = () => {
     isLoading: verificationLoading, 
     error: verificationError, 
     refresh,
-    progress,
-    currentChannel,
     isAllowed,
     missingChannels 
   } = useSubscriptionVerification(webApp);
@@ -41,13 +38,10 @@ export const DruidEntryPage: React.FC = () => {
     return <WelcomeScreen onGetStarted={() => {}} />;
   }
 
-  // Загрузка проверки подписок с мистическим прогресс-баром
+  // Загрузка проверки подписок
   if (verificationLoading) {
     return (
-      <MysticalLoadingScreen 
-        progress={progress}
-        currentChannel={currentChannel}
-      />
+      <MysticalLoadingScreen />
     );
   }
 
