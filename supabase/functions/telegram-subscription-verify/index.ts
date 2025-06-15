@@ -166,7 +166,10 @@ serve(async (req) => {
         if (!ac.channels) return null;
         return {
           id: ac.channels.chat_id || ac.channels.username || ac.channels.id,
-          name: ac.channels.username ? `@${ac.channels.username}` : ac.channels.name
+          // Исправляем логику формирования имени канала
+          name: ac.channels.username 
+            ? (ac.channels.username.startsWith('@') ? ac.channels.username : `@${ac.channels.username}`)
+            : ac.channels.name
         };
       })
       .filter((c): c is { id: string; name: string } => c !== null);
