@@ -29,6 +29,9 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
   const [error, setError] = useState<string | null>(null);
   const { authenticateUser, isAuthenticated } = useTelegramContext();
 
+  // Держим ref на текущий <script> для корректного удаления
+  const scriptRef = useRef<HTMLScriptElement | null>(null);
+
   console.log('=== TelegramLoginWidget RENDER ===');
   console.log('isAuthenticated:', isAuthenticated);
   console.log('botUsername:', botUsername);
@@ -45,26 +48,32 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
     setError(null);
     setScriptLoaded(false);
 
-    // Очищаем контейнер
+    // Очищаем контейнер кнопки
     if (containerRef.current) {
       containerRef.current.innerHTML = '';
     }
 
-    // Создаем уникальную функцию обратного вызова для каждого рендера
+    // Удаляем предыдущий скрипт если был
+    if (scriptRef.current && scriptRef.current.parentNode) {
+      scriptRef.current.parentNode.removeChild(scriptRef.current);
+      scriptRef.current = null;
+      console.log('Удалён старый <script> Telegram Widget');
+    }
+
+    // Создаем уникальный callback для этого рендера
     const callbackName = `telegramLoginCallback_${Date.now()}_${widgetKey}`;
     console.log('Создаем callback:', callbackName);
 
     (window as any)[callbackName] = async (user: any) => {
       console.log('=== TELEGRAM LOGIN WIDGET CALLBACK ===');
       console.log('Получены данные пользователя:', user);
-      
+
       try {
         // Проверяем данные пользователя
         if (!user || !user.id || !user.hash) {
           throw new Error('Недопустимые данные пользователя от Telegram');
         }
 
-        // Аутентифицируем пользователя через наш безопасный метод
         const success = await authenticateUser(user);
         if (success) {
           onAuth(user);
@@ -75,14 +84,14 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
         console.error('Ошибка в Telegram Login Widget:', error);
         setError(error instanceof Error ? error.message : 'Неизвестная ошибка');
       } finally {
-        // Очищаем функцию из глобальной области
+        // Очищаем функцию из глобального scope
         if ((window as any)[callbackName]) {
           delete (window as any)[callbackName];
         }
       }
     };
 
-    // Создаем скрипт для виджета
+    // Создаём скрипт для виджета
     const script = document.createElement('script');
     script.async = true;
     script.src = 'https://telegram.org/js/telegram-widget.js?22';
@@ -104,16 +113,28 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
       setError('Не удалось загрузить Telegram Widget');
     };
 
-    // Добавляем скрипт в контейнер
+    // Добавляем скрипт в контейнер и сохраняем ref
     if (containerRef.current) {
       containerRef.current.appendChild(script);
+      scriptRef.current = script;
       console.log('Скрипт добавлен в контейнер');
     }
 
-    // Очистка при размонтировании
+    // Очистка при размонтировании или при смене любых props
     return () => {
+      // Очищаем контейнер
+      if (containerRef.current) {
+        containerRef.current.innerHTML = '';
+      }
+      // Очищаем callback
       if ((window as any)[callbackName]) {
         delete (window as any)[callbackName];
+      }
+      // Удаляем предыдущий скрипт
+      if (scriptRef.current && scriptRef.current.parentNode) {
+        scriptRef.current.parentNode.removeChild(scriptRef.current);
+        scriptRef.current = null;
+        console.log('Удалён <script> Telegram Widget при cleanup');
       }
     };
   }, [botUsername, buttonSize, cornerRadius, requestAccess, usePic, lang, onAuth, authenticateUser, isAuthenticated, widgetKey]);
@@ -141,17 +162,17 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
             <p className="text-xs text-red-600 mt-1">{error}</p>
           </div>
         )}
-        
+
         <div className="flex justify-center mb-4">
           <div ref={containerRef} key={widgetKey} />
         </div>
-        
+
         {!scriptLoaded && !error && (
           <div className="text-center text-xs text-gray-500 mb-2">
             Загружаем виджет входа...
           </div>
         )}
-        
+
         <div className="text-xs text-gray-500 text-center space-y-1">
           <div>Используется официальный API Telegram для безопасной проверки подписок</div>
           <div className="text-blue-600">
