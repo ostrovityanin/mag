@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTelegramContext } from '@/components/TelegramProvider';
 
@@ -14,7 +14,7 @@ interface TelegramLoginWidgetProps {
 }
 
 export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
-  botUsername = 'your_bot_username', // Заменить на реальный username бота
+  botUsername = 'your_bot_username',
   onAuth,
   buttonSize = 'large',
   cornerRadius = 20,
@@ -23,16 +23,22 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
   lang = 'ru'
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { authenticateUser } = useTelegramContext();
+  const [widgetKey, setWidgetKey] = useState(0); // Ключ для принудительного обновления виджета
+  const { authenticateUser, isAuthenticated } = useTelegramContext();
 
   useEffect(() => {
+    // Если пользователь уже аутентифицирован, не показываем виджет
+    if (isAuthenticated) {
+      return;
+    }
+
     // Очищаем контейнер
     if (containerRef.current) {
       containerRef.current.innerHTML = '';
     }
 
-    // Создаем функцию обратного вызова в глобальной области
-    const callbackName = `telegramLoginCallback_${Date.now()}`;
+    // Создаем уникальную функцию обратного вызова для каждого рендера
+    const callbackName = `telegramLoginCallback_${Date.now()}_${widgetKey}`;
     (window as any)[callbackName] = async (user: any) => {
       console.log('=== TELEGRAM LOGIN WIDGET CALLBACK ===');
       console.log('Получены данные пользователя:', user);
@@ -52,6 +58,11 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
         }
       } catch (error) {
         console.error('Ошибка в Telegram Login Widget:', error);
+      } finally {
+        // Очищаем функцию из глобальной области
+        if ((window as any)[callbackName]) {
+          delete (window as any)[callbackName];
+        }
       }
     };
 
@@ -78,7 +89,17 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
         delete (window as any)[callbackName];
       }
     };
-  }, [botUsername, buttonSize, cornerRadius, requestAccess, usePic, lang, onAuth, authenticateUser]);
+  }, [botUsername, buttonSize, cornerRadius, requestAccess, usePic, lang, onAuth, authenticateUser, isAuthenticated, widgetKey]);
+
+  // Функция для принудительного обновления виджета
+  const refreshWidget = () => {
+    setWidgetKey(prev => prev + 1);
+  };
+
+  // Если пользователь уже аутентифицирован, не показываем виджет
+  if (isAuthenticated) {
+    return null;
+  }
 
   return (
     <Card className="max-w-md mx-auto">
@@ -90,7 +111,7 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
       </CardHeader>
       <CardContent>
         <div className="flex justify-center">
-          <div ref={containerRef} />
+          <div ref={containerRef} key={widgetKey} />
         </div>
         <div className="mt-4 text-xs text-gray-500 text-center">
           Используется официальный API Telegram для безопасной проверки подписок

@@ -2,14 +2,14 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Shield } from 'lucide-react';
+import { CheckCircle, Shield, Loader2 } from 'lucide-react';
 import { useTelegramContext } from '@/components/TelegramProvider';
 import { TelegramLoginWidget } from '@/components/TelegramLoginWidget';
 import { useTelegramWidgetAuth } from '@/hooks/useTelegramWidgetAuth';
 
 const SimpleTelegramAuth: React.FC = () => {
-  const { authenticatedUser, isAuthenticated } = useTelegramContext();
-  const { authenticateWithWidget } = useTelegramWidgetAuth();
+  const { authenticatedUser, isAuthenticated, isLoading: contextLoading } = useTelegramContext();
+  const { authenticateWithWidget, isLoading: authLoading } = useTelegramWidgetAuth();
 
   const handleTelegramAuth = async (telegramUser: any) => {
     console.log('=== ОБРАБОТКА TELEGRAM AUTH В SimpleTelegramAuth ===');
@@ -18,17 +18,28 @@ const SimpleTelegramAuth: React.FC = () => {
     const success = await authenticateWithWidget(telegramUser);
     if (success) {
       console.log('Аутентификация через виджет успешна');
-      // Перезагружаем страницу для обновления состояния
-      window.location.reload();
+      // Не перезагружаем страницу, позволяем контексту обновиться
     }
   };
 
-  // Если пользователь не аутентифицирован, показываем виджет входа
+  // Показываем загрузку если контекст или аутентификация загружаются
+  if (contextLoading || authLoading) {
+    return (
+      <Card className="max-w-md mx-auto">
+        <CardContent className="p-6 text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-sm text-gray-600">Загрузка...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Если пользователь НЕ аутентифицирован, показываем виджет входа
   if (!isAuthenticated || !authenticatedUser) {
     return (
       <div className="max-w-md mx-auto">
         <TelegramLoginWidget
-          botUsername="your_bot_username" // TODO: Заменить на реальный username бота
+          botUsername="your_bot_username"
           onAuth={handleTelegramAuth}
           buttonSize="large"
           cornerRadius={10}
@@ -51,7 +62,7 @@ const SimpleTelegramAuth: React.FC = () => {
     );
   }
 
-  // Если всё ок — показ приветствия пользователя
+  // Если пользователь аутентифицирован, показываем приветствие
   return (
     <Card className="max-w-md mx-auto border-green-200">
       <CardHeader>
