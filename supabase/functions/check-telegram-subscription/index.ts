@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -183,6 +182,30 @@ serve(async (req) => {
       }
       
       throw new Error(`Ошибка Telegram API (${telegramApiResponse.error_code}): ${telegramApiResponse.description || 'Неизвестная ошибка'}`)
+    }
+
+    // === ДОБАВЛЯЕМ ОЧИСТКУ user_subscriptions ===
+    // Очищаем результаты прошлых проверок чтобы не было "вечного" кэша
+    console.log("=== ОЧИСТКА user_subscriptions перед новой проверкой ===")
+    const { error: deleteError } = await supabase
+      .from('user_subscriptions')
+      .delete()
+      .eq('user_id', userId.toString())
+      .eq('channel_id', channelId);
+
+    if (deleteError) {
+      console.error("Ошибка при очистке записей user_subscriptions:", deleteError)
+      await logToDatabase(supabase, 'error', 'Ошибка очистки user_subscriptions', {
+        userId,
+        channelId,
+        deleteError
+      }, 'check-telegram-subscription', userId)
+      // Не прерываем дальнейшую работу, просто логируем ошибку
+    } else {
+      await logToDatabase(supabase, 'info', 'Очищены старые записи user_subscriptions', {
+        userId,
+        channelId
+      }, 'check-telegram-subscription', userId)
     }
 
     // Сохранение результата в базу данных
