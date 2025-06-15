@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTelegramContext } from '@/components/TelegramProvider';
+import { AlertCircle } from 'lucide-react';
 
 interface TelegramLoginWidgetProps {
   botUsername: string;
@@ -23,14 +24,26 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
   lang = 'ru'
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [widgetKey, setWidgetKey] = useState(0); // Ключ для принудительного обновления виджета
+  const [widgetKey, setWidgetKey] = useState(0);
+  const [scriptLoaded, setScriptLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { authenticateUser, isAuthenticated } = useTelegramContext();
+
+  console.log('=== TelegramLoginWidget RENDER ===');
+  console.log('isAuthenticated:', isAuthenticated);
+  console.log('botUsername:', botUsername);
+  console.log('widgetKey:', widgetKey);
 
   useEffect(() => {
     // Если пользователь уже аутентифицирован, не показываем виджет
     if (isAuthenticated) {
+      console.log('Пользователь аутентифицирован, скрываем виджет');
       return;
     }
+
+    console.log('=== ЗАГРУЗКА TELEGRAM WIDGET ===');
+    setError(null);
+    setScriptLoaded(false);
 
     // Очищаем контейнер
     if (containerRef.current) {
@@ -39,6 +52,8 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
 
     // Создаем уникальную функцию обратного вызова для каждого рендера
     const callbackName = `telegramLoginCallback_${Date.now()}_${widgetKey}`;
+    console.log('Создаем callback:', callbackName);
+
     (window as any)[callbackName] = async (user: any) => {
       console.log('=== TELEGRAM LOGIN WIDGET CALLBACK ===');
       console.log('Получены данные пользователя:', user);
@@ -58,6 +73,7 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
         }
       } catch (error) {
         console.error('Ошибка в Telegram Login Widget:', error);
+        setError(error instanceof Error ? error.message : 'Неизвестная ошибка');
       } finally {
         // Очищаем функцию из глобальной области
         if ((window as any)[callbackName]) {
@@ -78,9 +94,20 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
     script.setAttribute('data-lang', lang);
     script.setAttribute('data-onauth', callbackName);
 
+    script.onload = () => {
+      console.log('Скрипт Telegram Widget загружен успешно');
+      setScriptLoaded(true);
+    };
+
+    script.onerror = () => {
+      console.error('Ошибка загрузки скрипта Telegram Widget');
+      setError('Не удалось загрузить Telegram Widget');
+    };
+
     // Добавляем скрипт в контейнер
     if (containerRef.current) {
       containerRef.current.appendChild(script);
+      console.log('Скрипт добавлен в контейнер');
     }
 
     // Очистка при размонтировании
@@ -90,11 +117,6 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
       }
     };
   }, [botUsername, buttonSize, cornerRadius, requestAccess, usePic, lang, onAuth, authenticateUser, isAuthenticated, widgetKey]);
-
-  // Функция для принудительного обновления виджета
-  const refreshWidget = () => {
-    setWidgetKey(prev => prev + 1);
-  };
 
   // Если пользователь уже аутентифицирован, не показываем виджет
   if (isAuthenticated) {
@@ -110,11 +132,31 @@ export const TelegramLoginWidget: React.FC<TelegramLoginWidgetProps> = ({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex justify-center">
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center space-x-2 text-red-700">
+              <AlertCircle className="h-4 w-4" />
+              <span className="text-sm font-medium">Ошибка</span>
+            </div>
+            <p className="text-xs text-red-600 mt-1">{error}</p>
+          </div>
+        )}
+        
+        <div className="flex justify-center mb-4">
           <div ref={containerRef} key={widgetKey} />
         </div>
-        <div className="mt-4 text-xs text-gray-500 text-center">
-          Используется официальный API Telegram для безопасной проверки подписок
+        
+        {!scriptLoaded && !error && (
+          <div className="text-center text-xs text-gray-500 mb-2">
+            Загружаем виджет входа...
+          </div>
+        )}
+        
+        <div className="text-xs text-gray-500 text-center space-y-1">
+          <div>Используется официальный API Telegram для безопасной проверки подписок</div>
+          <div className="text-blue-600">
+            Отладка: botUsername={botUsername}, scriptLoaded={scriptLoaded ? 'да' : 'нет'}
+          </div>
         </div>
       </CardContent>
     </Card>
