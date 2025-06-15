@@ -1,7 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { TelegramUser } from '@/types/telegram';
 import { useAdminLogs } from '@/hooks/useAdminLogs';
 import { useSecurityMonitor } from '@/hooks/useSecurityMonitor';
 
@@ -21,8 +20,8 @@ interface TelegramUserData {
 }
 
 /**
- * Хук useTelegramAuth: строго определяет юзера Telegram,
- * логирует все действия, исключает любые тестовые сценарии.
+ * Обновленный хук useTelegramAuth для работы с Telegram Login Widget
+ * Удалена поддержка WebApp initDataUnsafe для повышения безопасности
  */
 export const useTelegramAuth = () => {
   const [currentUser, setCurrentUser] = useState<TelegramUserData | null>(null);
@@ -33,174 +32,141 @@ export const useTelegramAuth = () => {
   const { checkForTestUser, logSuspiciousAuth } = useSecurityMonitor();
 
   /**
-   * Проверить, валиден ли TelegramUser.
-   * Логировать и блокировать любые подозрительные действия.
+   * Проверить валидность данных пользователя от Telegram Login Widget
    */
-  const validateTelegramUser = useCallback((tg: TelegramUser): true => {
-    if (!tg || !tg.id || typeof tg.id !== 'number' || tg.id <= 0) {
-      logSuspiciousAuth(tg?.id ?? 0, 'Недопустимый telegram_id');
-      throw new Error('Недопустимый telegram_id');
+  const validateTelegramWidgetUser = useCallback((telegramData: any): true => {
+    if (!telegramData || !telegramData.id || typeof telegramData.id !== 'number' || telegramData.id <= 0) {
+      logSuspiciousAuth(telegramData?.id ?? 0, 'Недопустимый telegram_id от Widget');
+      throw new Error('Недопустимый telegram_id от Telegram Widget');
     }
-    // Жесткий запрет на тестовых юзеров всегда (!)
-    const check = checkForTestUser(tg.id, tg.username);
+
+    if (!telegramData.hash || !telegramData.auth_date) {
+      logSuspiciousAuth(telegramData.id, 'Отсутствуют обязательные поля верификации от Widget');
+      throw new Error('Отсутствуют данные верификации от Telegram Widget');
+    }
+
+    // Проверяем время аутентификации (не старше 24 часов)
+    const authAge = Date.now() / 1000 - telegramData.auth_date;
+    if (authAge > 86400) {
+      logSuspiciousAuth(telegramData.id, 'Устаревшие данные аутентификации от Widget');
+      throw new Error('Данные аутентификации устарели');
+    }
+
+    // Блокируем тестовых пользователей
+    const check = checkForTestUser(telegramData.id, telegramData.username);
     if (check.isTestUser) {
       const msg = `Тестовые пользователи запрещены (${check.reason})`;
-      logSuspiciousAuth(tg.id, msg);
+      logSuspiciousAuth(telegramData.id, msg);
       throw new Error(msg);
     }
+
     return true;
   }, [checkForTestUser, logSuspiciousAuth]);
 
   /**
-   * Создать или обновить пользователя Telegram в базе
+   * Аутентификация пользователя через Telegram Login Widget
    */
-  const createOrUpdateUser = useCallback(async (telegramUser: TelegramUser): Promise<TelegramUserData> => {
-    const startTime = Date.now();
-    validateTelegramUser(telegramUser);
+  const authenticateUser = useCallback(async (telegramData: any): Promise<boolean> => {
+    setIsLoading(true);
+    setError(null);
 
-    logAdminAction({
-      log_type: 'auth_attempt',
-      operation: 'user_login_attempt',
-      details: {
-        telegram_id: telegramUser.id,
-        username: telegramUser.username,
-        first_name: telegramUser.first_name,
-        last_name: telegramUser.last_name,
-        has_premium: telegramUser.is_premium,
-        language: telegramUser.language_code,
-        timestamp: new Date().toISOString(),
-      },
-      telegram_user_id: telegramUser.id,
-      success: true,
-    });
+    try {
+      console.log('=== НАЧАЛО WIDGET АУТЕНТИФИКАЦИИ ===');
+      console.log('Данные от Widget:', telegramData);
 
-    // Проверяем — есть ли такой пользователь
-    const { data: existing, error } = await supabase
-      .from('telegram_users')
-      .select('*')
-      .eq('telegram_id', telegramUser.id)
-      .single();
+      // Валидируем данные
+      validateTelegramWidgetUser(telegramData);
 
-    // Собираем всегда однообразный профиль из данных Telegram
-    const userData = {
-      telegram_id: telegramUser.id,
-      username: telegramUser.username || null,
-      first_name: telegramUser.first_name || null,
-      last_name: telegramUser.last_name || null,
-      language_code: telegramUser.language_code || 'ru',
-      is_premium: telegramUser.is_premium || false,
-      is_bot: telegramUser.is_bot || false,
-      photo_url: telegramUser.photo_url || null,
-      last_login: new Date().toISOString(),
-    };
-
-    if (error && error.code !== 'PGRST116') {
+      // Логируем попытку аутентификации
       logAdminAction({
         log_type: 'auth_attempt',
-        operation: 'user_login_failed',
+        operation: 'widget_user_login_attempt',
         details: {
-          telegram_id: telegramUser.id,
-          username: telegramUser.username,
-          error: error.message,
+          telegram_id: telegramData.id,
+          username: telegramData.username,
+          first_name: telegramData.first_name,
+          auth_date: telegramData.auth_date,
+          has_hash: !!telegramData.hash,
+          auth_method: 'telegram_widget',
           timestamp: new Date().toISOString(),
         },
-        telegram_user_id: telegramUser.id,
-        execution_time_ms: Date.now() - startTime,
-        success: false,
-        error_message: error.message,
+        telegram_user_id: telegramData.id,
+        success: true,
       });
-      throw error;
-    }
 
-    if (existing) {
-      // Обновляем существующего пользователя
-      const { data: updated, error: updateError } = await supabase
-        .from('telegram_users')
-        .update({
-          ...userData,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', existing.id)
-        .select()
-        .single();
+      // Вызываем edge function для безопасной верификации и создания пользователя
+      const { data: authResult, error: authError } = await supabase.functions.invoke(
+        'telegram-widget-auth',
+        {
+          body: {
+            telegramData,
+            timestamp: Date.now()
+          }
+        }
+      );
 
-      if (updateError) {
-        throw updateError;
+      if (authError) {
+        throw new Error(`Ошибка верификации Widget: ${authError.message}`);
       }
 
+      if (!authResult || !authResult.success) {
+        throw new Error(authResult?.error || 'Неизвестная ошибка верификации Widget');
+      }
+
+      const userData = authResult.user;
+      const sessionToken = authResult.sessionToken;
+
+      if (!userData || !sessionToken) {
+        throw new Error('Не удалось получить данные пользователя или сессию');
+      }
+
+      // Сохраняем токен сессии
+      localStorage.setItem('telegram_session_token', sessionToken);
+      setCurrentUser(userData);
+
+      // Логируем успешную аутентификацию
       logAdminAction({
-        log_type: 'user_load',
-        operation: 'existing_user_login',
+        log_type: 'auth_attempt',
+        operation: 'widget_user_login_completed',
         details: {
-          user_id: updated.id,
-          telegram_id: telegramUser.id,
-          last_login_before: existing.last_login,
-          login_time: userData.last_login,
-          username: telegramUser.username,
-          is_premium: telegramUser.is_premium,
+          user_id: userData.id,
+          telegram_id: userData.telegram_id,
+          username: userData.username,
+          auth_method: 'telegram_widget',
+          login_finished: new Date().toISOString(),
         },
-        telegram_user_id: telegramUser.id,
-        execution_time_ms: Date.now() - startTime,
+        telegram_user_id: userData.telegram_id,
         success: true,
       });
 
-      return updated;
-    } else {
-      // Создаём нового пользователя
-      const { data: newUser, error: insertError } = await supabase
-        .from('telegram_users')
-        .insert(userData)
-        .select()
-        .single();
-      if (insertError) throw insertError;
+      return true;
 
+    } catch (err: any) {
+      const errorMessage = err?.message ?? 'Ошибка аутентификации Widget';
+      setError(errorMessage);
+      setCurrentUser(null);
+
+      // Логируем ошибку
       logAdminAction({
-        log_type: 'user_load',
-        operation: 'new_user_registration',
+        log_type: 'auth_attempt',
+        operation: 'widget_user_login_failed',
         details: {
-          user_id: newUser.id,
-          telegram_id: telegramUser.id,
-          registration_time: userData.last_login,
-          username: telegramUser.username,
-          first_name: telegramUser.first_name,
-          last_name: telegramUser.last_name,
-          is_premium: telegramUser.is_premium,
-          language_code: telegramUser.language_code,
+          telegram_id: telegramData?.id || null,
+          username: telegramData?.username,
+          error: errorMessage,
+          auth_method: 'telegram_widget',
+          timestamp: new Date().toISOString(),
         },
-        telegram_user_id: telegramUser.id,
-        execution_time_ms: Date.now() - startTime,
-        success: true,
+        telegram_user_id: telegramData?.id || 0,
+        success: false,
+        error_message: errorMessage,
       });
 
-      return newUser;
+      return false;
+    } finally {
+      setIsLoading(false);
     }
-  }, [logAdminAction, validateTelegramUser]);
-
-  /**
-   * Создать сессию Telegram
-   */
-  const createSession = useCallback(async (userId: string): Promise<string> => {
-    await supabase
-      .from('telegram_sessions')
-      .delete()
-      .eq('user_id', userId);
-
-    const sessionToken = `tg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
-
-    const { error } = await supabase
-      .from('telegram_sessions')
-      .insert({
-        user_id: userId,
-        session_token: sessionToken,
-        expires_at: expiresAt.toISOString(),
-      });
-
-    if (error) throw error;
-    localStorage.setItem('telegram_session_token', sessionToken);
-    return sessionToken;
-  }, []);
+  }, [validateTelegramWidgetUser, logAdminAction]);
 
   /**
    * Проверить сессию в базе
@@ -212,73 +178,17 @@ export const useTelegramAuth = () => {
       .eq('session_token', sessionToken)
       .gt('expires_at', new Date().toISOString())
       .single();
+
     if (error || !data || !data.telegram_users) {
       localStorage.removeItem('telegram_session_token');
       return null;
     }
+
     return data.telegram_users as TelegramUserData;
   }, []);
 
   /**
-   * Аутентификация пользователя Telegram (главная функция для фронта)
-   */
-  const authenticateUser = useCallback(async (telegramUser: TelegramUser): Promise<boolean> => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Проверяем пользователя (отказ, если тест или мусор)
-      validateTelegramUser(telegramUser);
-
-      // Создаем/обновляем пользователя
-      const userData = await createOrUpdateUser(telegramUser);
-      if (!userData) throw new Error('Не удалось создать пользователя');
-
-      // Создаём сессию для user_id
-      const sessionToken = await createSession(userData.id);
-      if (!sessionToken) throw new Error('Не удалось создать сессию');
-
-      setCurrentUser(userData);
-
-      // Доп. лог для полной отладки
-      logAdminAction({
-        log_type: 'auth_attempt',
-        operation: 'user_login_completed',
-        details: {
-          user_id: userData.id,
-          telegram_id: userData.telegram_id,
-          login_finished: new Date().toISOString(),
-        },
-        telegram_user_id: userData.telegram_id,
-        success: true,
-      });
-
-      return true;
-    } catch (err: any) {
-      setError(err?.message ?? 'Ошибка аутентификации');
-      setCurrentUser(null);
-      // Отдельный лог ошибки
-      logAdminAction({
-        log_type: 'auth_attempt',
-        operation: 'user_login_failed',
-        details: {
-          telegram_id: telegramUser?.id || null,
-          username: telegramUser?.username,
-          error: err?.message || String(err),
-          timestamp: new Date().toISOString(),
-        },
-        telegram_user_id: telegramUser?.id || 0,
-        success: false,
-        error_message: err?.message || String(err),
-      });
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [validateTelegramUser, createOrUpdateUser, createSession, logAdminAction]);
-
-  /**
-   * Выход из системы и очистка сессии
+   * Выход из системы
    */
   const logout = useCallback(async () => {
     try {
@@ -289,6 +199,7 @@ export const useTelegramAuth = () => {
           .delete()
           .eq('session_token', sessionToken);
       }
+
       if (currentUser) {
         logAdminAction({
           log_type: 'auth_attempt',
@@ -302,6 +213,7 @@ export const useTelegramAuth = () => {
           success: true,
         });
       }
+
       localStorage.removeItem('telegram_session_token');
       setCurrentUser(null);
     } catch (err) {
@@ -310,13 +222,13 @@ export const useTelegramAuth = () => {
   }, [currentUser, logAdminAction]);
 
   /**
-   * При монтировании: если есть сессия — проверяем её, иначе сбрасываем всё.
-   * При невалидной сессии никакой пользователь не установлен.
+   * При монтировании проверяем существующую сессию
    */
   useEffect(() => {
     const checkExistingSession = async () => {
       setIsLoading(true);
       const sessionToken = localStorage.getItem('telegram_session_token');
+      
       if (sessionToken) {
         const userData = await validateSession(sessionToken);
         if (userData) {
@@ -336,6 +248,7 @@ export const useTelegramAuth = () => {
       }
       setIsLoading(false);
     };
+
     checkExistingSession();
   }, [validateSession, logAdminAction]);
 
