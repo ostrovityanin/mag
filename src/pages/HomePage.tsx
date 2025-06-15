@@ -9,9 +9,9 @@ import { useUserSubscriptions } from '@/hooks/useUserSubscriptions';
 import { useChannels } from '@/hooks/useChannels';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertCircle, User, LogOut } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import SimpleTelegramAuth from '@/components/SimpleTelegramAuth';
+import { UserInfoHeader } from '@/components/UserInfoHeader';
 
 export const HomePage: React.FC = () => {
   const { 
@@ -64,10 +64,12 @@ export const HomePage: React.FC = () => {
     );
   }
 
+  // Для неавторизованного — приветственный экран (WelcomeScreen)
   if (!isAuthenticated) {
     return <WelcomeScreen onGetStarted={handleGetStarted} />;
   }
 
+  // После авторизации, но до доступа — проверки подписок и каналов
   if (subscriptionsLoading || channelsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
@@ -137,10 +139,11 @@ export const HomePage: React.FC = () => {
     );
   }
 
-  // Основной интерфейс приложения
+  // --- ОСНОВНОЙ ИНТЕРФЕЙС для авторизованных ---
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
       <div className="container mx-auto px-4 py-8">
+        <UserInfoHeader />
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             🔮 Астро Печенье
@@ -149,9 +152,9 @@ export const HomePage: React.FC = () => {
             Персональные гороскопы и предсказания для вас
           </p>
         </div>
+        {/* Место для карточек, гороскопов и основного контента */}
+        {/* <HoroscopeCard />, <FortuneCard /> и др. можно размещать тут */}
 
-        <SimpleTelegramAuth />
-        
         <div className="mt-12 text-center">
           <p className="text-sm text-gray-500">
             Powered by Telegram WebApp • Версия 2.0
