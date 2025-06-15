@@ -19,7 +19,7 @@ export const HomePage: React.FC = () => {
     isAuthenticated, 
     authenticatedUser, 
     authError, 
-    isLoading: telegramLoading,
+    isLoading: isAppLoading,
     logout 
   } = useTelegramContext();
   
@@ -60,7 +60,7 @@ export const HomePage: React.FC = () => {
   };
 
   // Показываем загрузку, пока инициализируется Telegram или проходит аутентификация
-  if (telegramLoading) {
+  if (isAppLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
         <div className="text-center">

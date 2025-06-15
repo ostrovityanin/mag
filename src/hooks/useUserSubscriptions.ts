@@ -18,10 +18,10 @@ interface SubscriptionResult {
 }
 
 export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
-  const { authenticatedUser, isAuthenticated, authTimestamp } = useTelegramContext();
+  const { authenticatedUser, isAuthenticated } = useTelegramContext();
 
   return useQuery<SubscriptionResult, Error>({
-    queryKey: ['user-subscriptions', authenticatedUser?.id, appCode, authTimestamp],
+    queryKey: ['user-subscriptions', authenticatedUser?.id, appCode],
     enabled: isAuthenticated && !!authenticatedUser,
     staleTime: 0, // Данные считаются устаревшими немедленно
     refetchOnMount: 'always', // Всегда запрашивать при монтировании компонента
