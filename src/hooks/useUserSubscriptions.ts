@@ -19,9 +19,9 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
   return useQuery<SubscriptionResult, Error>({
     queryKey: ['user-subscriptions', user?.id, appCode],
     enabled: isAuthenticated && !!user,
-    staleTime: 0, // Данные считаются устаревшими немедленно
-    refetchOnMount: 'always', // Всегда запрашивать при монтировании компонента
-    refetchOnWindowFocus: true, // Запрашивать при фокусе на окне
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       if (!user) {
         throw new Error('Пользователь не аутентифицирован');
@@ -61,6 +61,7 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
 
         debugInfo.times.gotChannels = Date.now();
         debugInfo.appChannelsRaw = appChannels;
+        
         if (appChannelsError) {
           debugInfo.thrownError = appChannelsError;
           throw new Error('Не удалось получить список каналов');
@@ -106,18 +107,18 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
         const channelIdentifiers = channels.map(c => c.chat_id || c.username!);
         debugInfo.channelIdentifiers = channelIdentifiers;
 
-        // Добавляем передачу username и appCode для логирования
         const { data: checkResult, error: checkError } = await supabase.functions.invoke(
           'simple-check-subscription',
           {
             body: {
               userId: user.id.toString(),
               channelIds: channelIdentifiers,
-              appCode, // <- новый параметр для таблицы subscription_checks_log
+              appCode,
               username: user.username
             },
           }
         );
+        
         debugInfo.times.invokedFunction = Date.now();
         debugInfo.checkResult = checkResult;
         debugInfo.checkError = checkError;
@@ -131,30 +132,43 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
         const missingChannels: Channel[] = [];
         const subscriptionsById: Record<string, boolean> = {};
 
+        // Улучшенная логика обработки подписок с учетом ошибок
         channels.forEach(channel => {
           const username = channel.username;
           const chatId = channel.chat_id;
 
           let isSubscribed = false;
-          // Проверяем по ID чата
+          
+          // Проверяем подписку по разным идентификаторам
           if (chatId && subscriptions[chatId] === true) {
             isSubscribed = true;
-          }
-          // Проверяем по имени пользователя (например, 'mychannel')
-          if (!isSubscribed && username && subscriptions[username] === true) {
+          } else if (username && subscriptions[username] === true) {
             isSubscribed = true;
-          }
-          // Проверяем по имени пользователя с @ (например, '@mychannel')
-          if (!isSubscribed && username && subscriptions[`@${username}`] === true) {
+          } else if (username && subscriptions[`@${username}`] === true) {
             isSubscribed = true;
           }
           
           subscriptionsById[channel.id] = isSubscribed;
 
+          // Добавляем в список недостающих только если:
+          // 1. Пользователь не подписан
+          // 2. И проверка не завершилась ошибкой (статус не "error")
           if (!isSubscribed) {
-            missingChannels.push(channel);
+            // Проверяем, была ли ошибка при проверке этого канала
+            const hasError = (chatId && subscriptions[chatId] === 'error') || 
+                           (username && subscriptions[username] === 'error') ||
+                           (username && subscriptions[`@${username}`] === 'error');
+            
+            // Если ошибка проверки канала, логируем но не блокируем пользователя
+            if (hasError) {
+              console.warn(`Ошибка проверки канала ${channel.name} (${chatId || username}) - пропускаем проверку`);
+            } else {
+              // Добавляем только каналы без ошибок проверки
+              missingChannels.push(channel);
+            }
           }
         });
+        
         debugInfo.missingChannels = missingChannels;
         debugInfo.subscriptionsById = subscriptionsById;
 

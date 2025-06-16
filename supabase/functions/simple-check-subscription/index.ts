@@ -59,7 +59,7 @@ serve(async (req) => {
     }
 
     // Проверяем подписки для каждого канала
-    const subscriptions: Record<string, boolean> = {};
+    const subscriptions: Record<string, boolean | string> = {};
     
     for (const chId of channelIds) {
       try {
@@ -68,6 +68,7 @@ serve(async (req) => {
           chatId = '@' + chatId;
         }
 
+        console.log(`Проверяем канал: ${chatId}`);
         const telegramUrl = `https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${encodeURIComponent(chatId)}&user_id=${encodeURIComponent(userId)}`;
 
         const response = await fetch(telegramUrl);
@@ -77,17 +78,21 @@ serve(async (req) => {
           const memberStatus = data.result?.status;
           const isSubscribed = ['member', 'administrator', 'creator'].includes(memberStatus);
           subscriptions[chId] = isSubscribed;
+          console.log(`Канал ${chatId}: статус=${memberStatus}, подписан=${isSubscribed}`);
         } else {
-          subscriptions[chId] = false;
+          // Отмечаем как ошибку вместо false
+          subscriptions[chId] = 'error';
+          console.error(`Ошибка проверки канала ${chatId}:`, data.error_code, data.description);
         }
       } catch (error) {
-        subscriptions[chId] = false;
+        // Отмечаем как ошибку вместо false
+        subscriptions[chId] = 'error';
+        console.error(`Исключение при проверке канала ${chId}:`, error);
       }
     }
 
     // Запись в логи подписок
     try {
-      // Получаем авторизационный ключ и url из переменных окружения
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
       const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
       if (supabaseUrl && supabaseAnonKey) {
@@ -111,8 +116,9 @@ serve(async (req) => {
       }
     } catch (logErr) {
       console.error('Ошибка записи subscription_checks_log', logErr);
-      // Не прерываем основной ответ
     }
+
+    console.log('Результат проверки подписок:', subscriptions);
 
     return new Response(
       JSON.stringify({ subscriptions }),
