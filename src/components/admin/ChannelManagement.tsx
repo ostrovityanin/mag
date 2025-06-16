@@ -287,6 +287,7 @@ export const ChannelManagement: React.FC = () => {
 
   const handleChannelTypeChange = (value: 'public' | 'private') => {
     if (value === "private") {
+      // Очищаем username при выборе приватного канала
       setFormData({ ...formData, channel_type: value, username: '' });
     } else {
       setFormData({ ...formData, channel_type: value });
@@ -345,7 +346,7 @@ export const ChannelManagement: React.FC = () => {
                 </div>
                 <div>
                   <Label htmlFor="username">
-                    Username (без @) {formData.channel_type === 'private' && '(необязательно)'}
+                    Username (без @) {formData.channel_type === 'private' && '(не используется)'}
                   </Label>
                   <Input
                     id="username"
