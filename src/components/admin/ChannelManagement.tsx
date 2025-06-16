@@ -46,12 +46,15 @@ export const ChannelManagement: React.FC = () => {
       console.log('=== СОЗДАНИЕ КАНАЛА ===');
       console.log('Данные канала:', data);
 
-      // Проверяем существование канала с таким же username (если указан)
-      if (data.username.trim()) {
+      // Для приватных каналов не используем username
+      const usernameToCheck = data.channel_type === 'private' ? null : data.username.trim();
+      
+      // Проверяем существование канала с таким же username (только для публичных каналов)
+      if (data.channel_type === 'public' && usernameToCheck) {
         const { data: existingChannel, error: checkError } = await supabase
           .from('channels')
           .select('id, username')
-          .eq('username', data.username.trim())
+          .eq('username', usernameToCheck)
           .maybeSingle();
 
         if (checkError) {
@@ -61,7 +64,7 @@ export const ChannelManagement: React.FC = () => {
 
         if (existingChannel) {
           console.log('Канал с таким username уже существует:', existingChannel);
-          throw new Error(`Канал с username "${data.username}" уже существует`);
+          throw new Error(`Канал с username "${usernameToCheck}" уже существует`);
         }
       }
 
@@ -84,14 +87,26 @@ export const ChannelManagement: React.FC = () => {
         }
       }
 
+      // Подготавливаем данные для вставки
+      const channelInsertData: any = {
+        name: data.name,
+        chat_id: data.chat_id.trim() || null,
+        invite_link: data.invite_link.trim() || null,
+      };
+
+      // Добавляем username только для публичных каналов
+      if (data.channel_type === 'public' && usernameToCheck) {
+        channelInsertData.username = usernameToCheck;
+      } else {
+        // Для приватных каналов генерируем уникальный username на основе chat_id или случайной строки
+        channelInsertData.username = `private_${data.chat_id.replace(/[^0-9]/g, '') || Math.random().toString(36).substr(2, 9)}`;
+      }
+
+      console.log('Данные для вставки в канал:', channelInsertData);
+
       const { data: channelData, error: channelError } = await supabase
         .from('channels')
-        .insert({
-          name: data.name,
-          username: data.username.trim() || '',
-          chat_id: data.chat_id.trim() || null,
-          invite_link: data.invite_link.trim() || null,
-        })
+        .insert(channelInsertData)
         .select('id')
         .single();
 
