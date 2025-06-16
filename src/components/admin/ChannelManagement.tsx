@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useChannels } from '@/hooks/useChannels';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
@@ -44,18 +43,64 @@ export const ChannelManagement: React.FC = () => {
 
   const createChannelMutation = useMutation({
     mutationFn: async (data: ChannelFormData) => {
+      console.log('=== СОЗДАНИЕ КАНАЛА ===');
+      console.log('Данные канала:', data);
+
+      // Проверяем существование канала с таким же username (если указан)
+      if (data.username.trim()) {
+        const { data: existingChannel, error: checkError } = await supabase
+          .from('channels')
+          .select('id, username')
+          .eq('username', data.username.trim())
+          .maybeSingle();
+
+        if (checkError) {
+          console.error('Ошибка проверки существующего канала:', checkError);
+          throw new Error('Ошибка проверки существующего канала');
+        }
+
+        if (existingChannel) {
+          console.log('Канал с таким username уже существует:', existingChannel);
+          throw new Error(`Канал с username "${data.username}" уже существует`);
+        }
+      }
+
+      // Проверяем существование канала с таким же chat_id (если указан)
+      if (data.chat_id.trim()) {
+        const { data: existingChannel, error: checkError } = await supabase
+          .from('channels')
+          .select('id, chat_id')
+          .eq('chat_id', data.chat_id.trim())
+          .maybeSingle();
+
+        if (checkError) {
+          console.error('Ошибка проверки существующего канала по chat_id:', checkError);
+          throw new Error('Ошибка проверки существующего канала');
+        }
+
+        if (existingChannel) {
+          console.log('Канал с таким chat_id уже существует:', existingChannel);
+          throw new Error(`Канал с chat_id "${data.chat_id}" уже существует`);
+        }
+      }
+
       const { data: channelData, error: channelError } = await supabase
         .from('channels')
         .insert({
           name: data.name,
-          username: data.username || '',
-          chat_id: data.chat_id || null,
-          invite_link: data.invite_link || null,
+          username: data.username.trim() || '',
+          chat_id: data.chat_id.trim() || null,
+          invite_link: data.invite_link.trim() || null,
         })
         .select('id')
         .single();
 
-      if (channelError) throw channelError;
+      if (channelError) {
+        console.error('Ошибка создания канала:', channelError);
+        throw channelError;
+      }
+
+      console.log('Канал создан:', channelData);
       const channelId = channelData.id;
 
       const appsToInsert = data.app_name === 'both' 
@@ -68,14 +113,20 @@ export const ChannelManagement: React.FC = () => {
         required: data.required,
       }));
 
+      console.log('Создаем связи с приложениями:', appChannelInserts);
+
       const { error: appChannelError } = await supabase
         .from('app_channels')
         .insert(appChannelInserts);
       
       if (appChannelError) {
+        console.error('Ошибка создания связей с приложениями:', appChannelError);
+        // Удаляем созданный канал, если не удалось создать связи
         await supabase.from('channels').delete().eq('id', channelId);
         throw appChannelError;
       }
+
+      console.log('Канал успешно создан с ID:', channelId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
@@ -87,10 +138,11 @@ export const ChannelManagement: React.FC = () => {
       });
     },
     onError: (error) => {
-      console.error('Error creating channel:', error);
+      console.error('Ошибка создания канала:', error);
+      const errorMessage = error instanceof Error ? error.message : "Не удалось создать канал";
       toast({
         title: "Ошибка",
-        description: "Не удалось создать канал.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
