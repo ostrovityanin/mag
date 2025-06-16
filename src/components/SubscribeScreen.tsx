@@ -51,6 +51,21 @@ export const SubscribeScreen: React.FC<SubscribeScreenProps> = ({
     return '#';
   };
 
+  const getDisplayChannelName = (channel: { chat_id: string; channel_name?: string }, index: number) => {
+    // Если channel_name начинается с @private_ - это техническое имя, используем просто "Канал X"
+    if (channel.channel_name?.startsWith('@private_')) {
+      return `Канал ${index + 1}`;
+    }
+    
+    // Если есть обычное название канала, используем его (убираем @ если есть)
+    if (channel.channel_name && channel.channel_name.trim() !== '') {
+      return channel.channel_name.replace('@', '');
+    }
+    
+    // Fallback
+    return `Канал ${index + 1}`;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md border-yellow-200">
@@ -75,12 +90,13 @@ export const SubscribeScreen: React.FC<SubscribeScreenProps> = ({
               {missingChannels.map((channel, index) => {
                 const channelUrl = getChannelUrl(channel);
                 const isValidUrl = channelUrl !== '#';
+                const displayName = getDisplayChannelName(channel, index);
                 
                 return (
                   <div key={channel.chat_id} className="flex items-center justify-between p-2 bg-white rounded border">
                     <div className="flex-1">
-                      <span className="text-sm font-medium block">
-                        {channel.channel_name || `Канал ${index + 1}`}
+                      <span className="text-sm font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent block">
+                        {displayName}
                       </span>
                     </div>
                     {isValidUrl ? (
