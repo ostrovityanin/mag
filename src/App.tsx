@@ -9,6 +9,9 @@ import { HomePage } from "@/pages/HomePage";
 import { DruidPage } from "@/pages/DruidPage";
 import { DruidEntryPage } from "@/pages/DruidEntryPage";
 import { DruidAppPage } from "@/pages/DruidAppPage";
+import { CookiePage } from "@/pages/CookiePage";
+import { CookieEntryPage } from "@/pages/CookieEntryPage";
+import { CookieAppPage } from "@/pages/CookieAppPage";
 import { AdminPage } from "@/pages/AdminPage";
 import NotFound from "./pages/NotFound";
 
@@ -26,6 +29,9 @@ const App = () => (
             <Route path="/druid" element={<DruidEntryPage />} />
             <Route path="/druid/app" element={<DruidAppPage />} />
             <Route path="/Druid" element={<DruidPage />} />
+            <Route path="/cookie" element={<CookieEntryPage />} />
+            <Route path="/cookie/app" element={<CookieAppPage />} />
+            <Route path="/Cookie" element={<CookiePage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
