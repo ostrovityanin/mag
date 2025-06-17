@@ -14,14 +14,20 @@ export const useTelegramWebApp = () => {
   useEffect(() => {
     console.log('=== Telegram WebApp: ИНИЦИАЛИЗАЦИЯ ===');
 
-    const initTelegram = () => {
+    const sdk = document.getElementById('tg-webapp-sdk') as HTMLScriptElement | null;
+
+    if (!sdk) {
+      setError('Не найден тег SDK telegram-web-app.js');
+      setIsLoading(false);
+      return;
+    }
+
+    // Функция, которая реально пытается инициализировать WebApp
+    const handleLoad = () => {
       try {
-        if (
-          typeof window !== 'undefined' &&
-          window.Telegram?.WebApp &&
-          window.Telegram?.WebApp.initDataUnsafe?.user
-        ) {
-          const tg = window.Telegram.WebApp;
+        const tg = window.Telegram?.WebApp;
+        
+        if (tg?.initDataUnsafe?.user) {
           setWebApp(tg);
 
           // Инициализация WebApp
@@ -60,6 +66,7 @@ export const useTelegramWebApp = () => {
               console.warn('Не удалось подписаться на visibility_changed:', e);
             }
 
+            setError(null);
           } else {
             setUser(null);
             setError('Пользователь Telegram не найден в initDataUnsafe');
@@ -67,7 +74,7 @@ export const useTelegramWebApp = () => {
         } else {
           setUser(null);
           setWebApp(null);
-          setError('Telegram WebApp не обнаружен. Откройте приложение через Telegram');
+          setError('Похоже, приложение открыто вне Telegram');
         }
       } catch (error) {
         setUser(null);
@@ -79,7 +86,19 @@ export const useTelegramWebApp = () => {
       }
     };
 
-    initTelegram();
+    // 1) Скрипт уже загружен к этому моменту
+    if (sdk.complete) {
+      handleLoad();
+    }
+    // 2) Скрипт ещё в пути — ждём load
+    else {
+      sdk.addEventListener('load', handleLoad);
+    }
+
+    // cleanup
+    return () => {
+      sdk.removeEventListener('load', handleLoad);
+    };
   }, []);
 
   // Утилиты для работы с UI
