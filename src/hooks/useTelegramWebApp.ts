@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { TelegramWebApp, TelegramUser } from '@/types/telegram';
 
@@ -86,12 +85,11 @@ export const useTelegramWebApp = () => {
       }
     };
 
-    // 1) Скрипт уже загружен к этому моменту
-    if (sdk.complete) {
+    // Проверяем, загружен ли уже скрипт через наличие window.Telegram
+    if (window.Telegram) {
       handleLoad();
-    }
-    // 2) Скрипт ещё в пути — ждём load
-    else {
+    } else {
+      // Скрипт ещё не загружен — ждём load
       sdk.addEventListener('load', handleLoad);
     }
 
