@@ -9,663 +9,488 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      categories: {
+      admin_logs: {
         Row: {
           created_at: string
-          description: string | null
+          details: Json
+          error_message: string | null
+          execution_time_ms: number | null
+          filtered_count: number | null
           id: string
-          is_active: boolean | null
-          name: string
+          ip_address: string | null
+          log_type: string
+          operation: string
+          request_url: string | null
+          session_info: Json | null
+          success: boolean | null
+          telegram_user_id: number | null
+          user_agent: string | null
+          user_count: number | null
         }
         Insert: {
           created_at?: string
-          description?: string | null
+          details?: Json
+          error_message?: string | null
+          execution_time_ms?: number | null
+          filtered_count?: number | null
           id?: string
-          is_active?: boolean | null
-          name: string
+          ip_address?: string | null
+          log_type: string
+          operation: string
+          request_url?: string | null
+          session_info?: Json | null
+          success?: boolean | null
+          telegram_user_id?: number | null
+          user_agent?: string | null
+          user_count?: number | null
         }
         Update: {
           created_at?: string
-          description?: string | null
+          details?: Json
+          error_message?: string | null
+          execution_time_ms?: number | null
+          filtered_count?: number | null
           id?: string
-          is_active?: boolean | null
-          name?: string
+          ip_address?: string | null
+          log_type?: string
+          operation?: string
+          request_url?: string | null
+          session_info?: Json | null
+          success?: boolean | null
+          telegram_user_id?: number | null
+          user_agent?: string | null
+          user_count?: number | null
         }
         Relationships: []
+      }
+      app_channels: {
+        Row: {
+          app: string
+          channel_id: string | null
+          created_at: string
+          id: string
+          required: boolean
+        }
+        Insert: {
+          app: string
+          channel_id?: string | null
+          created_at?: string
+          id?: string
+          required?: boolean
+        }
+        Update: {
+          app?: string
+          channel_id?: string | null
+          created_at?: string
+          id?: string
+          required?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_channels_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       channels: {
         Row: {
-          channel_id: string
-          channel_name: string
+          chat_id: string | null
           created_at: string
           id: string
-          is_active: boolean | null
-          is_required: boolean | null
+          invite_link: string | null
+          name: string
+          username: string
         }
         Insert: {
-          channel_id: string
-          channel_name: string
+          chat_id?: string | null
           created_at?: string
           id?: string
-          is_active?: boolean | null
-          is_required?: boolean | null
+          invite_link?: string | null
+          name: string
+          username: string
         }
         Update: {
-          channel_id?: string
-          channel_name?: string
+          chat_id?: string | null
           created_at?: string
           id?: string
-          is_active?: boolean | null
-          is_required?: boolean | null
+          invite_link?: string | null
+          name?: string
+          username?: string
         }
         Relationships: []
       }
-      conversations: {
+      druid_sign_texts: {
         Row: {
-          category_id: string | null
-          cost_usd: number | null
-          created_at: string
-          full_prompt_sent: string | null
           id: string
-          message_text: string
-          response_text: string | null
-          system_prompt: string | null
-          telegram_user_id: number
-          tokens_used: number | null
+          sign_id: string
+          text: string
+          updated_at: string
         }
         Insert: {
-          category_id?: string | null
-          cost_usd?: number | null
-          created_at?: string
-          full_prompt_sent?: string | null
           id?: string
-          message_text: string
-          response_text?: string | null
-          system_prompt?: string | null
-          telegram_user_id: number
-          tokens_used?: number | null
+          sign_id: string
+          text: string
+          updated_at?: string
         }
         Update: {
-          category_id?: string | null
-          cost_usd?: number | null
-          created_at?: string
-          full_prompt_sent?: string | null
           id?: string
-          message_text?: string
-          response_text?: string | null
-          system_prompt?: string | null
-          telegram_user_id?: number
-          tokens_used?: number | null
+          sign_id?: string
+          text?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      fortune_requests: {
+        Row: {
+          created_at: string
+          id: string
+          request_date: string
+          response: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          request_date?: string
+          response?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          request_date?: string
+          response?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "conversations_category_id_fkey"
-            columns: ["category_id"]
+            foreignKeyName: "fortune_requests_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "categories"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
       }
-      daily_token_usage: {
-        Row: {
-          id: string
-          telegram_user_id: number
-          tokens_used: number | null
-          usage_date: string
-        }
-        Insert: {
-          id?: string
-          telegram_user_id: number
-          tokens_used?: number | null
-          usage_date?: string
-        }
-        Update: {
-          id?: string
-          telegram_user_id?: number
-          tokens_used?: number | null
-          usage_date?: string
-        }
-        Relationships: []
-      }
-      daw_categories: {
+      horoscope_requests: {
         Row: {
           created_at: string
-          description: string | null
           id: string
-          is_active: boolean | null
-          name: string
+          request_date: string
+          response: string | null
+          user_id: string | null
+          zodiac_sign: string
         }
         Insert: {
           created_at?: string
-          description?: string | null
           id?: string
-          is_active?: boolean | null
-          name: string
+          request_date?: string
+          response?: string | null
+          user_id?: string | null
+          zodiac_sign: string
         }
         Update: {
           created_at?: string
-          description?: string | null
           id?: string
-          is_active?: boolean | null
-          name?: string
-        }
-        Relationships: []
-      }
-      daw_channels: {
-        Row: {
-          channel_id: string
-          channel_name: string
-          created_at: string
-          id: string
-          is_active: boolean | null
-          is_required: boolean | null
-        }
-        Insert: {
-          channel_id: string
-          channel_name: string
-          created_at?: string
-          id?: string
-          is_active?: boolean | null
-          is_required?: boolean | null
-        }
-        Update: {
-          channel_id?: string
-          channel_name?: string
-          created_at?: string
-          id?: string
-          is_active?: boolean | null
-          is_required?: boolean | null
-        }
-        Relationships: []
-      }
-      daw_conversations: {
-        Row: {
-          category_id: string | null
-          cost_usd: number | null
-          created_at: string
-          full_prompt_sent: string | null
-          id: string
-          input_tokens: number | null
-          message_text: string
-          model_used: string | null
-          output_tokens: number | null
-          response_text: string | null
-          system_prompt: string | null
-          telegram_user_id: number
-          tokens_used: number | null
-        }
-        Insert: {
-          category_id?: string | null
-          cost_usd?: number | null
-          created_at?: string
-          full_prompt_sent?: string | null
-          id?: string
-          input_tokens?: number | null
-          message_text: string
-          model_used?: string | null
-          output_tokens?: number | null
-          response_text?: string | null
-          system_prompt?: string | null
-          telegram_user_id: number
-          tokens_used?: number | null
-        }
-        Update: {
-          category_id?: string | null
-          cost_usd?: number | null
-          created_at?: string
-          full_prompt_sent?: string | null
-          id?: string
-          input_tokens?: number | null
-          message_text?: string
-          model_used?: string | null
-          output_tokens?: number | null
-          response_text?: string | null
-          system_prompt?: string | null
-          telegram_user_id?: number
-          tokens_used?: number | null
+          request_date?: string
+          response?: string | null
+          user_id?: string | null
+          zodiac_sign?: string
         }
         Relationships: [
           {
-            foreignKeyName: "daw_conversations_category_id_fkey"
-            columns: ["category_id"]
+            foreignKeyName: "horoscope_requests_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "daw_categories"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
       }
-      daw_daily_token_usage: {
+      required_channels: {
         Row: {
-          id: string
-          telegram_user_id: number
-          tokens_used: number | null
-          usage_date: string
-        }
-        Insert: {
-          id?: string
-          telegram_user_id: number
-          tokens_used?: number | null
-          usage_date?: string
-        }
-        Update: {
-          id?: string
-          telegram_user_id?: number
-          tokens_used?: number | null
-          usage_date?: string
-        }
-        Relationships: []
-      }
-      daw_hourly_reminder_settings: {
-        Row: {
+          app_name: string
+          channel_type: string
+          chat_id: string | null
           created_at: string
-          hour_of_day: number
           id: string
-          is_enabled: boolean
-          telegram_user_id: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          hour_of_day: number
-          id?: string
-          is_enabled?: boolean
-          telegram_user_id: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          hour_of_day?: number
-          id?: string
-          is_enabled?: boolean
-          telegram_user_id?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      daw_model_pricing: {
-        Row: {
-          created_at: string | null
-          id: string
-          input_price_per_1k: number
-          is_active: boolean | null
-          model_name: string
-          output_price_per_1k: number
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          input_price_per_1k: number
-          is_active?: boolean | null
-          model_name: string
-          output_price_per_1k: number
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          input_price_per_1k?: number
-          is_active?: boolean | null
-          model_name?: string
-          output_price_per_1k?: number
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      daw_prompts: {
-        Row: {
-          content: string
-          created_at: string
-          description: string | null
-          id: string
+          invite_link: string | null
           name: string
-          updated_at: string
+          required: boolean
+          username: string
         }
         Insert: {
-          content: string
+          app_name?: string
+          channel_type?: string
+          chat_id?: string | null
           created_at?: string
-          description?: string | null
           id?: string
+          invite_link?: string | null
           name: string
-          updated_at?: string
+          required?: boolean
+          username: string
         }
         Update: {
-          content?: string
+          app_name?: string
+          channel_type?: string
+          chat_id?: string | null
           created_at?: string
-          description?: string | null
           id?: string
+          invite_link?: string | null
           name?: string
-          updated_at?: string
+          required?: boolean
+          username?: string
         }
         Relationships: []
       }
-      daw_reminder_queue: {
+      security_events: {
         Row: {
-          attempts: number
+          blocked_action: string | null
+          context: Json | null
           created_at: string
-          error_message: string | null
+          description: string
+          event_type: string
           id: string
-          max_attempts: number
-          scheduled_time: string
-          sent_at: string | null
-          status: string
-          telegram_user_id: number
-          updated_at: string
+          severity: string
+          telegram_user_id: number | null
         }
         Insert: {
-          attempts?: number
+          blocked_action?: string | null
+          context?: Json | null
           created_at?: string
-          error_message?: string | null
+          description: string
+          event_type: string
           id?: string
-          max_attempts?: number
-          scheduled_time: string
-          sent_at?: string | null
-          status?: string
-          telegram_user_id: number
-          updated_at?: string
+          severity?: string
+          telegram_user_id?: number | null
         }
         Update: {
-          attempts?: number
+          blocked_action?: string | null
+          context?: Json | null
           created_at?: string
-          error_message?: string | null
+          description?: string
+          event_type?: string
           id?: string
-          max_attempts?: number
-          scheduled_time?: string
-          sent_at?: string | null
-          status?: string
-          telegram_user_id?: number
-          updated_at?: string
+          severity?: string
+          telegram_user_id?: number | null
         }
         Relationships: []
       }
-      daw_reminder_settings: {
+      subscription_checks_log: {
         Row: {
-          created_at: string
+          app_code: string
+          channel_check_results: Json
+          checked_at: string
           id: string
-          is_active: boolean | null
-          reminder_time: string
           telegram_user_id: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_active?: boolean | null
-          reminder_time?: string
-          telegram_user_id: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_active?: boolean | null
-          reminder_time?: string
-          telegram_user_id?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      daw_telegram_users: {
-        Row: {
-          created_at: string
-          daily_tokens_limit: number | null
-          first_name: string | null
-          id: string
-          is_active: boolean | null
-          last_name: string | null
-          telegram_user_id: number
-          total_tokens_limit: number | null
-          total_tokens_used: number | null
-          updated_at: string | null
           username: string | null
         }
         Insert: {
-          created_at?: string
-          daily_tokens_limit?: number | null
-          first_name?: string | null
+          app_code?: string
+          channel_check_results: Json
+          checked_at?: string
           id?: string
-          is_active?: boolean | null
-          last_name?: string | null
           telegram_user_id: number
-          total_tokens_limit?: number | null
-          total_tokens_used?: number | null
-          updated_at?: string | null
           username?: string | null
         }
         Update: {
-          created_at?: string
-          daily_tokens_limit?: number | null
-          first_name?: string | null
+          app_code?: string
+          channel_check_results?: Json
+          checked_at?: string
           id?: string
-          is_active?: boolean | null
-          last_name?: string | null
           telegram_user_id?: number
-          total_tokens_limit?: number | null
-          total_tokens_used?: number | null
-          updated_at?: string | null
           username?: string | null
         }
         Relationships: []
       }
-      daw_user_context: {
+      system_logs: {
         Row: {
+          context: Json | null
           created_at: string
-          desires: string | null
-          goals: string | null
+          function_name: string | null
           id: string
-          preferences: Json | null
-          structured_goals: Json | null
-          telegram_user_id: number
-          updated_at: string
+          level: string
+          message: string
+          user_id: string | null
         }
         Insert: {
+          context?: Json | null
           created_at?: string
-          desires?: string | null
-          goals?: string | null
+          function_name?: string | null
           id?: string
-          preferences?: Json | null
-          structured_goals?: Json | null
-          telegram_user_id: number
-          updated_at?: string
+          level?: string
+          message: string
+          user_id?: string | null
         }
         Update: {
+          context?: Json | null
           created_at?: string
-          desires?: string | null
-          goals?: string | null
+          function_name?: string | null
           id?: string
-          preferences?: Json | null
-          structured_goals?: Json | null
-          telegram_user_id?: number
-          updated_at?: string
+          level?: string
+          message?: string
+          user_id?: string | null
         }
         Relationships: []
       }
-      daw_weekly_goals: {
+      telegram_sessions: {
         Row: {
           created_at: string
-          goal_text: string
+          expires_at: string
           id: string
-          is_active: boolean | null
-          telegram_user_id: number
-          updated_at: string
-          week_start: string
+          session_token: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
-          goal_text: string
+          expires_at: string
           id?: string
-          is_active?: boolean | null
-          telegram_user_id: number
-          updated_at?: string
-          week_start: string
+          session_token: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
-          goal_text?: string
+          expires_at?: string
           id?: string
-          is_active?: boolean | null
-          telegram_user_id?: number
-          updated_at?: string
-          week_start?: string
+          session_token?: string
+          user_id?: string | null
         }
-        Relationships: []
-      }
-      prompts: {
-        Row: {
-          content: string
-          created_at: string
-          description: string | null
-          id: string
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          name?: string
-          updated_at?: string
-        }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "telegram_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "telegram_users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       telegram_users: {
         Row: {
           created_at: string
-          daily_tokens_limit: number | null
           first_name: string | null
           id: string
-          is_active: boolean | null
+          is_bot: boolean | null
+          is_premium: boolean | null
+          language_code: string | null
+          last_login: string | null
           last_name: string | null
-          telegram_user_id: number
-          total_tokens_limit: number | null
-          total_tokens_used: number | null
+          photo_url: string | null
+          telegram_id: number
+          updated_at: string
           username: string | null
         }
         Insert: {
           created_at?: string
-          daily_tokens_limit?: number | null
           first_name?: string | null
           id?: string
-          is_active?: boolean | null
+          is_bot?: boolean | null
+          is_premium?: boolean | null
+          language_code?: string | null
+          last_login?: string | null
           last_name?: string | null
-          telegram_user_id: number
-          total_tokens_limit?: number | null
-          total_tokens_used?: number | null
+          photo_url?: string | null
+          telegram_id: number
+          updated_at?: string
           username?: string | null
         }
         Update: {
           created_at?: string
-          daily_tokens_limit?: number | null
           first_name?: string | null
           id?: string
-          is_active?: boolean | null
+          is_bot?: boolean | null
+          is_premium?: boolean | null
+          language_code?: string | null
+          last_login?: string | null
           last_name?: string | null
-          telegram_user_id?: number
-          total_tokens_limit?: number | null
-          total_tokens_used?: number | null
+          photo_url?: string | null
+          telegram_id?: number
+          updated_at?: string
           username?: string | null
         }
         Relationships: []
       }
-      user_context: {
+      user_subscriptions: {
+        Row: {
+          channel_id: string
+          checked_at: string | null
+          created_at: string
+          id: string
+          is_subscribed: boolean | null
+          user_id: string | null
+        }
+        Insert: {
+          channel_id: string
+          checked_at?: string | null
+          created_at?: string
+          id?: string
+          is_subscribed?: boolean | null
+          user_id?: string | null
+        }
+        Update: {
+          channel_id?: string
+          checked_at?: string | null
+          created_at?: string
+          id?: string
+          is_subscribed?: boolean | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
         Row: {
           created_at: string
-          desires: string | null
-          goals: string | null
+          first_name: string | null
           id: string
-          preferences: Json | null
-          structured_goals: Json | null
-          telegram_user_id: number
+          is_premium: boolean | null
+          language_code: string | null
+          last_name: string | null
+          telegram_id: number
           updated_at: string
+          username: string | null
         }
         Insert: {
           created_at?: string
-          desires?: string | null
-          goals?: string | null
+          first_name?: string | null
           id?: string
-          preferences?: Json | null
-          structured_goals?: Json | null
-          telegram_user_id: number
+          is_premium?: boolean | null
+          language_code?: string | null
+          last_name?: string | null
+          telegram_id: number
           updated_at?: string
+          username?: string | null
         }
         Update: {
           created_at?: string
-          desires?: string | null
-          goals?: string | null
+          first_name?: string | null
           id?: string
-          preferences?: Json | null
-          structured_goals?: Json | null
-          telegram_user_id?: number
+          is_premium?: boolean | null
+          language_code?: string | null
+          last_name?: string | null
+          telegram_id?: number
           updated_at?: string
+          username?: string | null
         }
         Relationships: []
       }
     }
     Views: {
-      daw_cost_analytics: {
-        Row: {
-          avg_cost_per_request: number | null
-          date: string | null
-          first_name: string | null
-          last_name: string | null
-          model_used: string | null
-          requests_count: number | null
-          telegram_user_id: number | null
-          total_cost_usd: number | null
-          total_input_tokens: number | null
-          total_output_tokens: number | null
-          total_tokens: number | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
-      check_token_limits: {
-        Args: { user_id: number; tokens_needed: number }
-        Returns: Json
-      }
-      create_default_hourly_reminders: {
-        Args: { user_id: number }
-        Returns: undefined
-      }
-      daw_check_token_limits: {
-        Args: { user_id: number; tokens_needed: number }
-        Returns: Json
-      }
-      daw_update_token_usage: {
-        Args: { user_id: number; tokens_used: number }
-        Returns: undefined
-      }
-      exec_sql: {
-        Args: { query: string }
-        Returns: {
-          result: Json
-        }[]
-      }
-      recalculate_conversation_costs: {
+      cleanup_old_logs: {
         Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      schedule_next_day_reminders: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      schedule_today_reminders: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      update_token_usage: {
-        Args: { user_id: number; tokens_used: number }
         Returns: undefined
       }
     }
