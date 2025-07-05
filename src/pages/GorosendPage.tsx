@@ -6,6 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CalendarDays, MapPin, Clock, Star } from 'lucide-react';
 
+// Импортируем библиотеку gorosend-lib
+import { Origin } from '../../gorosend-lib/src/Origin';
+import { Horoscope } from '../../gorosend-lib/src/Horoscope';
+
 interface PlanetPosition {
   name: string;
   position: string;
@@ -21,31 +25,118 @@ const GorosendPage: React.FC = () => {
   const [longitude, setLongitude] = useState('37.6176');
   const [planetPositions, setPlanetPositions] = useState<PlanetPosition[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const calculateHoroscope = async () => {
     setIsLoading(true);
+    setError(null);
+    
     try {
-      console.log('Начинаем расчет гороскопа...');
+      console.log('=== НАЧИНАЕМ РЕАЛЬНЫЙ РАСЧЕТ ГОРОСКОПА ===');
       console.log('Дата рождения:', birthDate, birthTime);
       console.log('Координаты:', { latitude, longitude });
       
-      // Временно используем моковые данные для демонстрации работы интерфейса
-      await new Promise(resolve => setTimeout(resolve, 1000)); // имитируем загрузку
+      // Парсим дату и время
+      const dateObj = new Date(birthDate + 'T' + birthTime);
+      console.log('Объект даты создан:', dateObj);
       
-      const mockData: PlanetPosition[] = [
-        { name: 'Солнце', position: '15°30\'', sign: 'Лев', degree: 15.5 },
-        { name: 'Луна', position: '22°45\'', sign: 'Рак', degree: 22.75 },
-        { name: 'Меркурий', position: '8°12\'', sign: 'Дева', degree: 8.2 },
-        { name: 'Венера', position: '5°33\'', sign: 'Рак', degree: 5.55 },
-        { name: 'Марс', position: '12°18\'', sign: 'Близнецы', degree: 12.3 },
-        { name: 'Юпитер', position: '27°54\'', sign: 'Стрелец', degree: 27.9 },
-        { name: 'Сатурн', position: '3°41\'', sign: 'Козерог', degree: 3.68 },
-      ];
+      // Создаем объект Origin
+      console.log('Создаем Origin с параметрами:', {
+        year: dateObj.getFullYear(),
+        month: dateObj.getMonth(),
+        date: dateObj.getDate(),
+        hour: dateObj.getHours(),
+        minute: dateObj.getMinutes(),
+        second: dateObj.getSeconds(),
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude)
+      });
       
-      setPlanetPositions(mockData);
+      const origin = new Origin({
+        year: dateObj.getFullYear(),
+        month: dateObj.getMonth(), // месяц в Origin начинается с 0
+        date: dateObj.getDate(),
+        hour: dateObj.getHours(),
+        minute: dateObj.getMinutes(),
+        second: dateObj.getSeconds(),
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude)
+      });
       
-    } catch (error) {
-      console.error('Ошибка при расчете гороскопа:', error);
+      console.log('Origin успешно создан:', origin);
+      console.log('Локальное время Origin:', origin.localTimeFormatted);
+      console.log('UTC время Origin:', origin.utcTimeFormatted);
+      console.log('Юлианская дата:', origin.julianDate);
+      
+      // Создаем гороскоп
+      console.log('Создаем объект Horoscope...');
+      const horoscope = new Horoscope({
+        origin: origin,
+        houseSystem: 'placidus',
+        zodiac: 'tropical',
+        aspectPoints: ['bodies'],
+        aspectWithPoints: ['bodies'],
+        aspectTypes: ["major"],
+        customOrbs: {},
+        language: 'en'
+      });
+      
+      console.log('Horoscope успешно создан:', horoscope);
+      console.log('CelestialBodies объект:', horoscope.CelestialBodies);
+      
+      // Получаем позиции планет
+      const planets = horoscope.CelestialBodies.all;
+      console.log('Получены планеты (тип all):', typeof planets, planets);
+      
+      let planetsList;
+      if (typeof planets === 'function') {
+        planetsList = planets();
+        console.log('Планеты как функция:', planetsList);
+      } else if (Array.isArray(planets)) {
+        planetsList = planets;
+        console.log('Планеты как массив:', planetsList);
+      } else {
+        console.log('Планеты как объект, ищем массив:', planets);
+        planetsList = horoscope.CelestialBodies.all || [];
+      }
+
+      console.log('Итоговый список планет:', planetsList);
+      
+      if (!planetsList || planetsList.length === 0) {
+        throw new Error('Не удалось получить данные о планетах');
+      }
+      
+      // Формируем данные для отображения
+      const planetData: PlanetPosition[] = planetsList.map((planet: any) => {
+        console.log('Обрабатываем планету:', planet);
+        
+        const degrees = planet.ChartPosition?.Ecliptic?.DecimalDegrees || 0;
+        const degreeInt = Math.floor(degrees);
+        const minutes = Math.floor((degrees % 1) * 60);
+        
+        return {
+          name: planet.label || planet.key || 'Неизвестная планета',
+          position: `${degreeInt}°${minutes}'`,
+          sign: planet.Sign?.label || planet.Sign?.key || 'Неизвестный знак',
+          degree: degrees
+        };
+      });
+      
+      console.log('Сформированные данные планет:', planetData);
+      setPlanetPositions(planetData);
+      
+    } catch (error: any) {
+      console.error('=== ОШИБКА ПРИ РАСЧЕТЕ ГОРОСКОПА ===');
+      console.error('Тип ошибки:', typeof error);
+      console.error('Сообщение ошибки:', error.message);
+      console.error('Полная ошибка:', error);
+      console.error('Stack trace:', error.stack);
+      
+      setError(`Ошибка расчета: ${error.message}`);
+      
+      // В случае ошибки показываем это в интерфейсе, но НЕ показываем моковые данные
+      setPlanetPositions([]);
+      
     } finally {
       setIsLoading(false);
     }
@@ -135,6 +226,12 @@ const GorosendPage: React.FC = () => {
               >
                 {isLoading ? 'Расчет...' : 'Рассчитать гороскоп'}
               </Button>
+
+              {error && (
+                <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 mt-4">
+                  <p className="text-red-200 text-sm">{error}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -144,7 +241,13 @@ const GorosendPage: React.FC = () => {
               <CardTitle className="text-white">Позиции планет</CardTitle>
             </CardHeader>
             <CardContent>
-              {planetPositions.length > 0 ? (
+              {error ? (
+                <div className="text-center text-red-300 py-8">
+                  <Star className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Произошла ошибка при расчете гороскопа</p>
+                  <p className="text-sm mt-2">Проверьте консоль для подробностей</p>
+                </div>
+              ) : planetPositions.length > 0 ? (
                 <div className="space-y-3">
                   {planetPositions.map((planet, index) => (
                     <div 
