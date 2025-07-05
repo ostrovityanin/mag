@@ -5,7 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CalendarDays, MapPin, Clock, Star } from 'lucide-react';
-import { Origin, Horoscope } from '../../GOROSEND/src/index.js';
+
+// Импортируем Origin и Horoscope из корректного пути
+import Origin from '../../GOROSEND/src/Origin.js';
+import { Horoscope } from '../../GOROSEND/src/Horoscope.js';
 
 interface PlanetPosition {
   name: string;
@@ -51,6 +54,8 @@ const GorosendPage = () => {
         throw new Error('Пожалуйста, введите дату');
       }
 
+      console.log('Создание Origin с параметрами:', formData);
+
       const dateObj = new Date(formData.date + 'T' + formData.time);
       
       const origin = new Origin({
@@ -63,6 +68,8 @@ const GorosendPage = () => {
         longitude: parseFloat(formData.longitude)
       });
 
+      console.log('Origin создан:', origin);
+
       const horoscope = new Horoscope({
         origin: origin,
         houseSystem: 'placidus',
@@ -72,6 +79,8 @@ const GorosendPage = () => {
         aspectTypes: ['major'],
         language: 'en'
       });
+
+      console.log('Horoscope создан:', horoscope);
 
       // Получаем планеты
       const planets: PlanetPosition[] = horoscope.CelestialBodies.all.map((body: any) => ({
@@ -93,6 +102,9 @@ const GorosendPage = () => {
         seconds: Math.floor(((point.ChartPosition.Ecliptic.DecimalDegrees % 1) * 60 % 1) * 60),
         house: point.House?.id
       }));
+
+      console.log('Планеты:', planets);
+      console.log('Точки:', points);
 
       setResults({
         planets: [...planets, ...points],

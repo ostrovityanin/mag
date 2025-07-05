@@ -79,17 +79,26 @@ export class Horoscope {
     this._customOrbs = validateCustomOrbs(customOrbs);
 
     // Remember - Ephemeris requires UTC time!
-    this.Ephemeris = new Ephemeris.default({
-      year: this.origin.utcTime.year(),
-      month: this.origin.utcTime.month(),
-      day: this.origin.utcTime.date(),
-      hours: this.origin.utcTime.hour(),
-      minutes: this.origin.utcTime.minute(),
-      seconds: this.origin.utcTime.second(),
-      latitude: parseFloat(this.origin.latitude),
-      longitude: parseFloat(this.origin.longitude),
-      calculateShadows: false,
-    });
+    // Проверяем, что Ephemeris импортируется правильно
+    console.log('Ephemeris объект:', Ephemeris);
+    console.log('Ephemeris.default:', Ephemeris.default);
+    
+    try {
+      this.Ephemeris = new Ephemeris.default({
+        year: this.origin.utcTime.year(),
+        month: this.origin.utcTime.month(),
+        day: this.origin.utcTime.date(),
+        hours: this.origin.utcTime.hour(),
+        minutes: this.origin.utcTime.minute(),
+        seconds: this.origin.utcTime.second(),
+        latitude: parseFloat(this.origin.latitude),
+        longitude: parseFloat(this.origin.longitude),
+        calculateShadows: false,
+      });
+    } catch (ephemerisError) {
+      console.error('Ошибка создания Ephemeris:', ephemerisError);
+      throw new Error(`Не удалось создать объект Ephemeris: ${ephemerisError.message}`);
+    }
 
     this._celestialBodies = this.processCelestialBodies(this.Ephemeris.Results);
     this._celestialPoints = this.processCelestialPoints(this.Ephemeris.Results);
