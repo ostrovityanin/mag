@@ -57,7 +57,10 @@ export const useTelegramWebApp = () => {
             };
 
             try {
-              const onEvent = (tg as any)?.onEvent;
+              interface WebAppWithEvent extends TelegramWebApp {
+                onEvent?: (event: string, cb: () => void) => void;
+              }
+              const onEvent = (tg as WebAppWithEvent | null)?.onEvent;
               if (typeof onEvent === 'function') {
                 onEvent.call(tg, 'visibility_changed', handleVisibilityChange);
               }

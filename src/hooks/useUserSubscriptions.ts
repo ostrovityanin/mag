@@ -4,13 +4,28 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTelegramContext } from '@/components/TelegramProvider';
 import type { Channel } from './useChannels';
 
+interface DebugInfo {
+  user: ReturnType<typeof useTelegramContext>['user'];
+  step: string;
+  appCode: string;
+  times: Record<string, number>;
+  appChannelsRaw: unknown;
+  channels: Channel[] | null;
+  channelIdentifiers: string[] | null;
+  checkResult: unknown;
+  missingChannels: Channel[] | null;
+  thrownError: unknown;
+  checkError?: unknown;
+  subscriptionsById?: Record<string, boolean>;
+}
+
 interface SubscriptionResult {
   hasUnsubscribedChannels: boolean;
   missingChannels: Channel[];
   subscriptionsById: Record<string, boolean>;
   isLoading: boolean;
   error: string | null;
-  debugInfo?: any;
+  debugInfo?: DebugInfo;
 }
 
 export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
@@ -27,7 +42,7 @@ export function useUserSubscriptions(appCode: 'druid' | 'cookie' = 'druid') {
         throw new Error('Пользователь не аутентифицирован');
       }
 
-      const debugInfo: any = {
+      const debugInfo: DebugInfo = {
         user,
         step: 'start',
         appCode,

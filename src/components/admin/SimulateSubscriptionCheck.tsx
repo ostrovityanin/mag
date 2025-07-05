@@ -9,7 +9,7 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 export const SimulateSubscriptionCheck: React.FC = () => {
   const [userInput, setUserInput] = useState("");
   const [appCode, setAppCode] = useState("druid");
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -62,8 +62,9 @@ export const SimulateSubscriptionCheck: React.FC = () => {
         ...data,
         status: resp.status,
       });
-    } catch (err: any) {
-      setErrorMsg(err.message || "Неизвестная ошибка");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Неизвестная ошибка";
+      setErrorMsg(msg);
     }
     setLoading(false);
   };

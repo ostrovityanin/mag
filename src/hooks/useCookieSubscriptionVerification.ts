@@ -75,8 +75,8 @@ export const useCookieSubscriptionVerification = (webApp: TelegramWebApp | null)
       setResult(finalResult);
       return finalResult;
 
-    } catch (err: any) {
-      const errorMessage = err.message || 'Ошибка проверки подписок';
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Ошибка проверки подписок';
       console.error('Ошибка при проверке подписок cookie:', err);
       setError(errorMessage);
       return null;

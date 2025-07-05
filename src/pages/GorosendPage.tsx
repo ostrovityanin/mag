@@ -17,6 +17,13 @@ interface PlanetPosition {
   degree: number;
 }
 
+interface PlanetFromLib {
+  label?: string;
+  key?: string;
+  ChartPosition?: { Ecliptic?: { DecimalDegrees?: number } };
+  Sign?: { label?: string; key?: string };
+}
+
 const GorosendPage: React.FC = () => {
   const [birthDate, setBirthDate] = useState('');
   const [birthTime, setBirthTime] = useState('');
@@ -107,7 +114,7 @@ const GorosendPage: React.FC = () => {
       }
       
       // Формируем данные для отображения
-      const planetData: PlanetPosition[] = planetsList.map((planet: any) => {
+      const planetData: PlanetPosition[] = planetsList.map((planet: PlanetFromLib) => {
         console.log('Обрабатываем планету:', planet);
         
         const degrees = planet.ChartPosition?.Ecliptic?.DecimalDegrees || 0;
@@ -125,12 +132,14 @@ const GorosendPage: React.FC = () => {
       console.log('Сформированные данные планет:', planetData);
       setPlanetPositions(planetData);
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('=== ОШИБКА ПРИ РАСЧЕТЕ ГОРОСКОПА ===');
       console.error('Тип ошибки:', typeof error);
-      console.error('Сообщение ошибки:', error.message);
+      console.error('Сообщение ошибки:', error instanceof Error ? error.message : 'unknown');
       console.error('Полная ошибка:', error);
-      console.error('Stack trace:', error.stack);
+      if (error instanceof Error) {
+        console.error('Stack trace:', error.stack);
+      }
       
       setError(`Ошибка расчета: ${error.message}`);
       

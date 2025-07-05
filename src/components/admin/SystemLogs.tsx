@@ -16,7 +16,7 @@ interface SystemLog {
   id: string;
   level: string;
   message: string;
-  context: any;
+  context: Record<string, unknown> | null;
   function_name: string;
   user_id: string;
   created_at: string;
