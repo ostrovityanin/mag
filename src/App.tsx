@@ -13,6 +13,7 @@ import { CookiePage } from "@/pages/CookiePage";
 import { CookieEntryPage } from "@/pages/CookieEntryPage";
 import { CookieAppPage } from "@/pages/CookieAppPage";
 import { AdminPage } from "@/pages/AdminPage";
+import GorosendPage from "@/pages/GorosendPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/cookie/app" element={<CookieAppPage />} />
             <Route path="/Cookie" element={<CookiePage />} />
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="/GOROSEND" element={<GorosendPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
