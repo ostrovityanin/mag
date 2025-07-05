@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,9 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CalendarDays, MapPin, Clock, Star } from 'lucide-react';
 
-// Импортируем Origin и Horoscope из корректного пути
-import Origin from '../../GOROSEND/src/Origin.js';
-import { Horoscope } from '../../GOROSEND/src/Horoscope.js';
+// Импортируем Origin и Horoscope из переименованного пути
+import Origin from '../../gorosend-lib/src/Origin.js';
+import { Horoscope } from '../../gorosend-lib/src/Horoscope.js';
 
 interface PlanetPosition {
   name: string;

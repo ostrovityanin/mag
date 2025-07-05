@@ -34,7 +34,7 @@ const App = () => (
             <Route path="/cookie/app" element={<CookieAppPage />} />
             <Route path="/Cookie" element={<CookiePage />} />
             <Route path="/admin" element={<AdminPage />} />
-            <Route path="/GOROSEND" element={<GorosendPage />} />
+            <Route path="/gorosend" element={<GorosendPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
