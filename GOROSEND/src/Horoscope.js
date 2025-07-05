@@ -1,5 +1,5 @@
 import moment from 'moment-timezone';
-import Ephemeris from '../lib/ephemeris-1.2.1.bundle';
+import * as Ephemeris from '../lib/ephemeris-1.2.1.bundle';
 import Sign from './Sign';
 import ChartPosition from './ChartPosition';
 import House from './House';
@@ -79,7 +79,7 @@ export class Horoscope {
     this._customOrbs = validateCustomOrbs(customOrbs);
 
     // Remember - Ephemeris requires UTC time!
-    this.Ephemeris = new Ephemeris({
+    this.Ephemeris = new Ephemeris.default({
       year: this.origin.utcTime.year(),
       month: this.origin.utcTime.month(),
       day: this.origin.utcTime.date(),
