@@ -6,10 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CalendarDays, MapPin, Clock, Star } from 'lucide-react';
 
-// Импортируем библиотеку gorosend-lib
-import { Origin } from '../../gorosend-lib/src/Origin';
-import { Horoscope } from '../../gorosend-lib/src/Horoscope';
-
 interface PlanetPosition {
   name: string;
   position: string;
@@ -30,69 +26,26 @@ const GorosendPage: React.FC = () => {
     setIsLoading(true);
     try {
       console.log('Начинаем расчет гороскопа...');
+      console.log('Дата рождения:', birthDate, birthTime);
+      console.log('Координаты:', { latitude, longitude });
       
-      // Парсим дату и время
-      const dateObj = new Date(birthDate + 'T' + birthTime);
+      // Временно используем моковые данные для демонстрации работы интерфейса
+      await new Promise(resolve => setTimeout(resolve, 1000)); // имитируем загрузку
       
-      console.log('Дата рождения:', dateObj);
-      console.log('Координаты:', { latitude: parseFloat(latitude), longitude: parseFloat(longitude) });
-      
-      // Создаем объект Origin
-      const origin = new Origin({
-        year: dateObj.getFullYear(),
-        month: dateObj.getMonth(), // месяц в Origin начинается с 0
-        date: dateObj.getDate(),
-        hour: dateObj.getHours(),
-        minute: dateObj.getMinutes(),
-        second: dateObj.getSeconds(),
-        latitude: parseFloat(latitude),
-        longitude: parseFloat(longitude)
-      });
-      
-      console.log('Origin создан:', origin);
-      
-      // Создаем гороскоп
-      const horoscope = new Horoscope({
-        origin: origin,
-        houseSystem: 'placidus',
-        zodiac: 'tropical',
-        aspectPoints: ['bodies', 'points', 'angles'],
-        aspectWithPoints: ['bodies', 'points', 'angles'],
-        aspectTypes: ["major", "minor"],
-        customOrbs: {},
-        language: 'en'
-      });
-      
-      console.log('Horoscope создан:', horoscope);
-      
-      // Получаем позиции планет
-      const planets = horoscope.CelestialBodies.all();
-      console.log('Планеты:', planets);
-      
-      // Формируем данные для отображения
-      const planetData: PlanetPosition[] = planets.map(planet => ({
-        name: planet.label,
-        position: `${Math.floor(planet.ChartPosition.Ecliptic.DecimalDegrees)}°${Math.floor((planet.ChartPosition.Ecliptic.DecimalDegrees % 1) * 60)}'`,
-        sign: planet.Sign.label,
-        degree: planet.ChartPosition.Ecliptic.DecimalDegrees
-      }));
-      
-      console.log('Данные планет сформированы:', planetData);
-      setPlanetPositions(planetData);
-      
-    } catch (error) {
-      console.error('Ошибка при расчете гороскопа:', error);
-      
-      // В случае ошибки показываем тестовые данные
       const mockData: PlanetPosition[] = [
         { name: 'Солнце', position: '15°30\'', sign: 'Лев', degree: 15.5 },
         { name: 'Луна', position: '22°45\'', sign: 'Рак', degree: 22.75 },
         { name: 'Меркурий', position: '8°12\'', sign: 'Дева', degree: 8.2 },
         { name: 'Венера', position: '5°33\'', sign: 'Рак', degree: 5.55 },
         { name: 'Марс', position: '12°18\'', sign: 'Близнецы', degree: 12.3 },
+        { name: 'Юпитер', position: '27°54\'', sign: 'Стрелец', degree: 27.9 },
+        { name: 'Сатурн', position: '3°41\'', sign: 'Козерог', degree: 3.68 },
       ];
       
       setPlanetPositions(mockData);
+      
+    } catch (error) {
+      console.error('Ошибка при расчете гороскопа:', error);
     } finally {
       setIsLoading(false);
     }
