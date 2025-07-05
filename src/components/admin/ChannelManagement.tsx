@@ -88,8 +88,16 @@ export const ChannelManagement: React.FC = () => {
       }
 
       // Подготавливаем данные для вставки
-      const channelInsertData: any = {
+      interface ChannelInsertPayload {
+        name: string;
+        username: string;
+        chat_id: string | null;
+        invite_link: string | null;
+      }
+
+      const channelInsertData: ChannelInsertPayload = {
         name: data.name,
+        username: '',
         chat_id: data.chat_id.trim() || null,
         invite_link: data.invite_link.trim() || null,
       };
@@ -165,7 +173,14 @@ export const ChannelManagement: React.FC = () => {
 
   const updateChannelMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<ChannelFormData> }) => {
-      const channelUpdateData: { [key: string]: any } = {};
+      interface ChannelUpdatePayload {
+        name?: string;
+        username?: string;
+        chat_id?: string | null;
+        invite_link?: string | null;
+      }
+
+      const channelUpdateData: ChannelUpdatePayload = {};
       if (data.name !== undefined) channelUpdateData.name = data.name;
       if (data.username !== undefined) channelUpdateData.username = data.username || '';
       if (data.chat_id !== undefined) channelUpdateData.chat_id = data.chat_id || null;
@@ -179,7 +194,12 @@ export const ChannelManagement: React.FC = () => {
         if (channelError) throw channelError;
       }
 
-      const appChannelUpdateData: { [key: string]: any } = {};
+      interface AppChannelUpdatePayload {
+        required?: boolean;
+        app?: string;
+      }
+
+      const appChannelUpdateData: AppChannelUpdatePayload = {};
       if (data.required !== undefined) appChannelUpdateData.required = data.required;
       if (data.app_name && data.app_name !== 'both') appChannelUpdateData.app = data.app_name;
 

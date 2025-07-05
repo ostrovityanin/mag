@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+import type { PostgrestError } from '@supabase/supabase-js';
 import { QuillEditor } from "./QuillEditor";
 
 // Типизация по схеме Supabase
@@ -27,7 +28,10 @@ export const ManualDruidSignsEditor: React.FC = () => {
     const fetchTexts = async () => {
       const { data, error } = await supabase
         .from("druid_sign_texts")
-        .select("sign_id,text") as { data: Array<Pick<DruidSignTextRow, "sign_id" | "text">> | null, error: any };
+        .select("sign_id,text") as {
+          data: Array<Pick<DruidSignTextRow, "sign_id" | "text">> | null;
+          error: PostgrestError | null;
+        };
       if (error) {
         toast({
           title: "Ошибка загрузки описаний",
@@ -75,7 +79,7 @@ export const ManualDruidSignsEditor: React.FC = () => {
           description: `Описание для "${DRUID_SIGNS.find(s => s.id === sign_id)?.name || sign_id}" сохранено.`,
         });
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       toast({
         title: `Ошибка сохранения`,
         description: String(e),

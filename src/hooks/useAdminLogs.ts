@@ -5,11 +5,11 @@ import { supabase } from '@/integrations/supabase/client';
 interface AdminLogData {
   log_type: string;
   operation: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   user_count?: number;
   filtered_count?: number;
   telegram_user_id?: number;
-  session_info?: Record<string, any>;
+  session_info?: Record<string, unknown>;
   request_url?: string;
   user_agent?: string;
   ip_address?: string;
@@ -22,7 +22,7 @@ interface SecurityEventData {
   event_type: string;
   severity?: 'low' | 'medium' | 'high' | 'critical';
   description: string;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
   telegram_user_id?: number;
   blocked_action?: string;
 }

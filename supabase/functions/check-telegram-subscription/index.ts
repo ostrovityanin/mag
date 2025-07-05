@@ -7,7 +7,20 @@ const corsHeaders = {
 }
 
 // Helper function to log to database
-async function logToDatabase(supabase: any, level: string, message: string, context: any = null, functionName: string = 'check-telegram-subscription', userId: string | null = null) {
+interface DBClient {
+  from(table: string): {
+    insert(values: Record<string, unknown>): Promise<unknown>;
+  };
+}
+
+async function logToDatabase(
+  supabase: DBClient,
+  level: string,
+  message: string,
+  context: Record<string, unknown> | null = null,
+  functionName: string = 'check-telegram-subscription',
+  userId: string | null = null,
+) {
   try {
     await supabase
       .from('system_logs')
