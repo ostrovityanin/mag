@@ -141,7 +141,7 @@ const GorosendPage: React.FC = () => {
         console.error('Stack trace:', error.stack);
       }
       
-      setError(`Ошибка расчета: ${error.message}`);
+      setError(`Ошибка расчета: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
       
       // В случае ошибки показываем это в интерфейсе, но НЕ показываем моковые данные
       setPlanetPositions([]);
